@@ -32,9 +32,6 @@
 
 #include "libwrapper.hpp"
 
-#define HTMLCOLOR 1
-
-#ifdef HTMLCOLOR
 static const char ESC_BLUE[] = "<font color='blue'>";
 static const char ESC_END[] = "</font>";
 static const char ESC_END_B[] = "</b>";
@@ -46,17 +43,6 @@ static const char ESC_ITALIC[] = "<i>";
 static const char ESC_LIGHT_GRAY[] = "<font color='gray'>";
 static const char ESC_BROWN[] = "<font color='brown'>";
 static const char ESC_GREEN[] = "<font color='green'>";
-#else
-static const char ESC_BLUE[] = "\033[0;34m";
-static const char ESC_END[] = "\033[0m";
-#define ESC_END_B ESC_END
-#define ESC_END_I ESC_END
-#define ESC_END_U ESC_END
-static const char ESC_BOLD[] = "\033[1m";
-static const char ESC_ITALIC[] = "\033[3m";
-static const char ESC_LIGHT_GRAY[] = "\033[0;37m";
-static const char ESC_GREEN[] = "\033[0;32m";
-#endif
 
 static const char *SEARCH_TERM_VISFMT = ESC_BOLD;
 static const char *NAME_OF_DICT_VISFMT = ESC_BLUE;
@@ -69,18 +55,19 @@ static std::string text2simplehtml(const char *str, guint32 &sec_size)
     std::string res;
     const char *p = str;
     for (; *p; ++p) {
-        const char *q;
-        q = strchr(p, '\n');
-        if (q) {
-            std::string line(p, q - p);
-            res += line + "<br>\n";
-            p = q;
-        } else {
-            guint32 tmp = res.length();
-            res += p;
-            tmp = res.length() - tmp;
-            p += tmp;
-            break;
+        switch (*p) {
+        case '\n':
+        	res += "<br>\n";
+        	break;
+        case '<':
+        	res += "&lt;";
+        	break;
+        case '>':
+        	res += "&gt;";
+        	break;
+        default:
+        	res += *p;
+        	break;
         }
     }
     sec_size = p - str;
@@ -91,12 +78,9 @@ static std::string xdxf2text(const char *xstr, bool colorize_output, guint32 &se
 {
     std::string res;
     const char *p = xstr;
-#ifdef HTMLCOLOR
     int tagFlag = 0;//1: kref. 2: rref.
-#endif
     for (; *p; ++p) {
         if (*p != '<') {
-#ifdef HTMLCOLOR
             if (tagFlag == 1) {//kref | a href
                 tagFlag = 0;
 
@@ -128,28 +112,10 @@ static std::string xdxf2text(const char *xstr, bool colorize_output, guint32 &se
                     continue;
                 }
             }
-            if (*p == '\n') {
+            if (colorize_output && *p == '\n') {
                 res += "<br>";
             }
-#else
-            if (g_str_has_prefix(p, "&gt;")) {
-                res += '>';
-                p += 3;
-            } else if (g_str_has_prefix(p, "&lt;")) {
-                res += '<';
-                p += 3;
-            } else if (g_str_has_prefix(p, "&amp;")) {
-                res += '&';
-                p += 4;
-            } else if (g_str_has_prefix(p, "&quot;")) {
-                res += '\"';
-                p += 5;
-            } else if (g_str_has_prefix(p, "&apos;")) {
-                res += '\'';
-                p += 5;
-            } else
-#endif
-                res += *p;
+            res += *p;
             continue;
         }
 
@@ -159,85 +125,64 @@ static std::string xdxf2text(const char *xstr, bool colorize_output, guint32 &se
 
         const std::string name(p + 1, next - p - 1);
 
-        if (name == "abr") {
-            if (colorize_output) res += ABR_VISFMT;
-        } else if (name == "/abr") {
-            if (colorize_output) res += ESC_END;
-        } else if (name == "k") {
-            const char *begin = next;
-            if ((next = strstr(begin, "</k>")) != nullptr)
-                next += sizeof("</k>") - 1 - 1;
-            else
-                next = begin;
-        } else if (name == "kref") {
-            if (colorize_output) {
-#ifdef HTMLCOLOR
-                res += "<a href='?w=";
-                tagFlag = 1;//kref | a href
-#else
-                res += ESC_BOLD;
-#endif
-            }
-        } else if (name == "/kref") {
-            if (colorize_output) {
-#ifdef HTMLCOLOR
-                res += "</a>";
-#else
-                res += ESC_END_B;
-#endif
-            }
-#ifdef HTMLCOLOR // only for html now.
-        } else if (name == "rref") {
-            if (colorize_output) {
-#ifdef HTMLCOLOR
-                tagFlag = 2;//rref | image, sound
-#else
-                res += ESC_UNDERLINE;
-#endif
-            }
-        } else if (name == "/rref") {
-            if (colorize_output) {
-#ifdef HTMLCOLOR
-                //nothing here.
-#else
-                res += ESC_END_U;
-#endif
-            }
-#endif
-        } else if (name == "b") {
-            if (colorize_output) res += ESC_BOLD;
-        } else if (name == "/b") {
-            if (colorize_output) res += ESC_END_B;
-        } else if (name == "i") {
-            if (colorize_output) res += ESC_ITALIC;
-        } else if (name == "/i") {
-            if (colorize_output) res += ESC_END_I;
-        } else if (name == "tr") {
-            if (colorize_output) {
-                res += TRANSCRIPTION_VISFMT;
-            }
-            res += '[';
-        } else if (name == "/tr") {
-            res += ']';
-            if (colorize_output) {
-                res += ESC_END;
-            }
-        } else if (name == "ex") {
-            if (colorize_output) res += EXAMPLE_VISFMT;
-        } else if (name == "/ex") {
-            if (colorize_output) res += ESC_END;
-        } else if (!name.empty() && name[0] == 'c' && name != "co") {
-            std::string::size_type pos = name.find('=');
-            if (pos != std::string::npos) {
-                pos += 2;
-                std::string::size_type end_pos = name.find('\"', pos);
-                const std::string color(name, pos, end_pos - pos);
-                res += "<font color='" + color + "'>";
-            } else {
-                res += ESC_GREEN;
-            }
-        } else if (name == "/c") {
-            res += ESC_END;
+        if (name == "k") {
+			const char *begin = next;
+			if ((next = strstr(begin, "</k>")) != nullptr)
+				next += sizeof("</k>") - 1 - 1;
+			else
+				next = begin;
+        }
+        if (colorize_output) {
+			if (name == "abr") {
+				res += ABR_VISFMT;
+			} else if (name == "/abr") {
+				res += ESC_END;
+			} else if (name == "kref") {
+					res += "<a href='?w=";
+					tagFlag = 1;//kref | a href
+			} else if (name == "/kref") {
+					res += "</a>";
+			} else if (name == "rref") {
+					tagFlag = 2;//rref | image, sound
+			} else if (name == "/rref") {
+					//nothing here.
+			} else if (name == "b") {
+				res += ESC_BOLD;
+			} else if (name == "/b") {
+				res += ESC_END_B;
+			} else if (name == "i") {
+				res += ESC_ITALIC;
+			} else if (name == "/i") {
+				res += ESC_END_I;
+			} else if (name == "tr") {
+				res += TRANSCRIPTION_VISFMT;
+				res += '[';
+			} else if (name == "/tr") {
+				res += ']';
+				res += ESC_END;
+			} else if (name == "ex") {
+				res += EXAMPLE_VISFMT;
+			} else if (name == "/ex") {
+				res += ESC_END;
+			} else if (!name.empty() && name[0] == 'c' && name != "co") {
+				std::string::size_type pos = name.find('=');
+				if (pos != std::string::npos) {
+					pos += 2;
+					std::string::size_type end_pos = name.find('\"', pos);
+					const std::string color(name, pos, end_pos - pos);
+					res += "<font color='" + color + "'>";
+				} else {
+					res += ESC_GREEN;
+				}
+			} else if (name == "/c") {
+				res += ESC_END;
+			}
+        } else {
+        	if (name == "tr") {
+				res += '[';
+			} else if (name == "/tr") {
+				res += ']';
+			}
         }
 
         p = next;
@@ -272,7 +217,6 @@ static std::string parse_data(const gchar *data, bool colorize_output)
         case 'm': // plain text, utf-8
         case 'l': // not utf-8, some other locale encoding, discouraged, need more work...
             if (*p) {
-#if HTMLCOLOR
                 if (colorize_output) {
                     res += text2simplehtml(p, sec_size);
                 } else {
@@ -280,30 +224,18 @@ static std::string parse_data(const gchar *data, bool colorize_output)
                     res += p;
                     sec_size = res.length() - sec_size;
                 }
-#else
-                res += '\n';
-                sec_size = res.length();
-                res += p;
-                sec_size = res.length() - sec_size;
-#endif
             }
             sec_size++;
             break;
         case 'g': // pango markup data
         case 'x': // xdxf
             if (*p) {
-#ifndef HTMLCOLOR
-                res += '\n';
-#endif
                 res += xdxf2text(p, colorize_output, sec_size);
             }
             sec_size++;
             break;
         case 't': // english phonetic string
             if (*p) {
-#ifndef HTMLCOLOR
-                res += '\n';
-#endif
                 if (colorize_output)
                     res += TRANSCRIPTION_VISFMT;
                 res += '[';
