@@ -1,8 +1,8 @@
 * How to compile and install
 #+BEGIN_SRC sh
-mkdir /tmp/build-sdcv
-cd /tmp/build-sdcv
-cmake path/to/source/code/of/sdcv
+mkdir /tmp/build-sdwv
+cd /tmp/build-sdwv
+cmake path/to/source/code/of/sdwv
 make
 #+END_SRC
 if you enable nls then you should also type
@@ -16,11 +16,11 @@ make install
 you can use "DESTDIR" variable to change installation path
 
 * Documentation
-See sdcv man page for usage description.
+See sdwv man page for usage description.
 
 * Bugs
 If you find bug reports it via email to dushistov at mail dot ru. 
-Be sure to include the word "sdcv" somewhere in the "Subject:" field.
+Be sure to include the word "sdwv" somewhere in the "Subject:" field.
 
 * Notes to developer
 ** make source code release
@@ -31,7 +31,7 @@ make package_source
 #+BEGIN_SRC sh
 cd po
 xgettext -k_ ../src/*.cpp -o new.pot
-msgmerge -U sdcv.pot new.pot
+msgmerge -U sdwv.pot new.pot
 rm new.pot
-for i in `ls *.po`; do msgmerge -U $i sdcv.pot; done
+for i in `ls *.po`; do msgmerge -U $i sdwv.pot; done
 #+END_SRC
