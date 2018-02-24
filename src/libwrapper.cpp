@@ -351,11 +351,6 @@ public:
         if (ignore_env) {
             return;
         }
-        const gchar *pager = g_getenv("SDCV_PAGER");
-        if (pager && (output = popen(pager, "w")) == nullptr) {
-            perror(_("popen failed"));
-            output = stdout;
-        }
     }
     sdcv_pager(const sdcv_pager &) = delete;
     sdcv_pager &operator=(const sdcv_pager &) = delete;
@@ -428,7 +423,7 @@ void Library::print_search_result(FILE *out, TSearchResultList &res_list, bool &
 	}
 }
 
-bool Library::process_phrase(const char *loc_str, IReadLine &io, bool force)
+bool Library::process_phrase(const char *loc_str)
 {
     if (nullptr == loc_str)
         return true;
@@ -436,8 +431,6 @@ bool Library::process_phrase(const char *loc_str, IReadLine &io, bool force)
     std::string query;
 
     analyze_query(loc_str, query);
-    if (!query.empty())
-        io.add_to_history(query.c_str());
 
     gsize bytes_read;
     gsize bytes_written;
@@ -483,7 +476,7 @@ bool Library::process_phrase(const char *loc_str, IReadLine &io, bool force)
         fputc('[', stdout);
     }
     if (!res_list.empty()) {
-		sdcv_pager pager(force || json_);
+		sdcv_pager pager(json_);
 		print_search_result(pager.get_stream(), res_list, first_result);
     } else {
         std::string loc_str;

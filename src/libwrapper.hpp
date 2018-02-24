@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 
-#include "readline.hpp"
 #include "stardict_lib.hpp"
 
 //this structure is wrapper and it need for unification
@@ -47,7 +46,7 @@ public:
         setFuzzy(!no_fuzzy);
     }
 
-    bool process_phrase(const char *loc_str, IReadLine &io, bool force = false);
+    bool process_phrase(const char *loc_str);
 
 private:
     bool utf8_input_;

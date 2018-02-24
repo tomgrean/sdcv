@@ -1,4 +1,4 @@
-project(sdcv)
+project(sdwv)
 
 # Older versions have a different signature for CMAKE_MINIMUM_REQUIRED,
 # check it manually just to make sure
@@ -23,26 +23,14 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindGLIB2.cmake")
 
 if (NOT GLIB2_FOUND)
-	message(FATAL_ERROR "sdcv require ${GLIB2_REQ}, "
+	message(FATAL_ERROR "sdwv require ${GLIB2_REQ}, "
 		"make sure that you install it")
 endif()
 
-set(WITH_READLINE True CACHE BOOL "Use readline library")
-
-if (WITH_READLINE)
-  find_path(READLINE_INCLUDE_DIR readline/readline.h)
-  find_library(READLINE_LIBRARY NAMES readline)
-  if (NOT (READLINE_INCLUDE_DIR AND READLINE_LIBRARY))
-    set(WITH_READLINE False CACHE FORCE)
-  endif ()
-endif (WITH_READLINE)
-
 option(ENABLE_NLS "Enable NLS support" True)
 
-set(sdcv_SRCS
-  src/sdcv.cpp
-  src/readline.cpp
-  src/readline.hpp
+set(sdwv_SRCS
+  src/sdwv.cpp
   src/libwrapper.cpp 
   src/libwrapper.hpp
   src/utils.cpp 
@@ -66,11 +54,11 @@ if (ENABLE_NLS)
   gettext_make_target("lang"
     HIERARCHY "{1}/{2}/{3}/{4}.mo"
     KEYWORDS  "_"
-    DOMAIN    "sdcv"
+    DOMAIN    "sdwv"
     STOCK_DIR ${gettext_stockDir}
     LANG_DIR  ${gettext_langDir}
     OUT_DIR   ${gettext_outDir}
-    SOURCE    ${sdcv_SRCS})
+    SOURCE    ${sdwv_SRCS})
 
   list(APPEND makeCleanFiles ${gettext_outDir})
 endif ()
@@ -88,7 +76,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake
 include_directories(
 	${ZLIB_INCLUDE_DIR}
 	${GLIB2_INCLUDE_DIRS}
-	${READLINE_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/src/lib
 	${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -103,17 +90,16 @@ set(CPACK_PACKAGE_VERSION_MAJOR "0")
 set(CPACK_PACKAGE_VERSION_MINOR "5")
 set(CPACK_PACKAGE_VERSION_PATCH "2")
 
-set(sdcv_VERSION
+set(sdwv_VERSION
 	"${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 
-add_definitions(-DVERSION="${sdcv_VERSION}" -DHAVE_CONFIG_H)
+add_definitions(-DVERSION="${sdwv_VERSION}" -DHAVE_CONFIG_H)
 
-add_executable(sdcv ${sdcv_SRCS})
+add_executable(sdwv ${sdwv_SRCS})
 
-target_link_libraries(sdcv
+target_link_libraries(sdwv
   ${GLIB2_LIBRARIES}
   ${ZLIB_LIBRARIES}
-  ${READLINE_LIBRARY}
 )
 if (ENABLE_NLS)
   set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "locale")
@@ -121,9 +107,9 @@ endif ()
 
 include(CPack)
 
-install(TARGETS sdcv DESTINATION "bin")
-install(FILES doc/sdcv.1 DESTINATION "share/man/man1")
-install(FILES doc/uk/sdcv.1 DESTINATION "share/man/uk/man1")
+install(TARGETS sdwv DESTINATION "bin")
+install(FILES doc/sdwv.1 DESTINATION "share/man/man1")
+install(FILES doc/uk/sdwv.1 DESTINATION "share/man/uk/man1")
 
 if (ENABLE_NLS)
   install(DIRECTORY "${gettext_outDir}" DESTINATION "share")
@@ -137,20 +123,20 @@ if (BUILD_TESTS)
   message(STATUS "Build tests")
   enable_testing()# Force "make test" to works
 
-  macro(add_sdcv_shell_test test_name)
+  macro(add_sdwv_shell_test test_name)
     add_test(NAME ${test_name}
-      COMMAND "${SHELL_CMD}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/${test_name}" $<TARGET_FILE:sdcv> "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+      COMMAND "${SHELL_CMD}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/${test_name}" $<TARGET_FILE:sdwv> "${CMAKE_CURRENT_SOURCE_DIR}/tests")
   endmacro()
 
-  add_sdcv_shell_test(t_list)
-  add_sdcv_shell_test(t_use)
-  add_sdcv_shell_test(t_only_data_dir)
-  add_sdcv_shell_test(t_synonyms)
-  add_sdcv_shell_test(t_json)
-  add_sdcv_shell_test(t_exact)
-  add_sdcv_shell_test(t_interactive)
-  add_sdcv_shell_test(t_utf8output)
-  add_sdcv_shell_test(t_utf8input)
-  add_sdcv_shell_test(t_datadir)
+  add_sdwv_shell_test(t_list)
+  add_sdwv_shell_test(t_use)
+  add_sdwv_shell_test(t_only_data_dir)
+  add_sdwv_shell_test(t_synonyms)
+  add_sdwv_shell_test(t_json)
+  add_sdwv_shell_test(t_exact)
+  add_sdwv_shell_test(t_interactive)
+  add_sdwv_shell_test(t_utf8output)
+  add_sdwv_shell_test(t_utf8input)
+  add_sdwv_shell_test(t_datadir)
 
 endif (BUILD_TESTS)

@@ -1,6 +1,6 @@
 /*
- * This file part of sdcv - console version of Stardict program
- * http://sdcv.sourceforge.net
+ * This file part of sdwv - web version of Stardict program
+ * https://github.com/tomgrean/sdwv
  * Copyright (C) 2003-2006 Evgeniy <dushistov@mail.ru>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -38,7 +38,6 @@
 #include <glib/gstdio.h>
 
 #include "libwrapper.hpp"
-#include "readline.hpp"
 #include "utils.hpp"
 
 static const char gVersion[] = VERSION;
@@ -53,6 +52,16 @@ static void free_str_array(gchar **arr)
         g_free(*p);
     g_free(arr);
 }
+static bool stdio_getline(FILE *in, std::string &str)
+{
+    assert(in != nullptr);
+    str.clear();
+    int ch;
+    while ((ch = fgetc(in)) != EOF && ch != '\n')
+        str += ch;
+
+    return EOF != ch;
+}
 }
 namespace glib
 {
@@ -64,17 +73,16 @@ static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_js
 int main(int argc, char *argv[]) try {
     setlocale(LC_ALL, "");
 #if ENABLE_NLS
-    bindtextdomain("sdcv",
+    bindtextdomain("sdwv",
                    //"./locale"//< for testing
                    GETTEXT_TRANSLATIONS_PATH //< should be
                    );
-    textdomain("sdcv");
+    textdomain("sdwv");
 #endif
 
     gboolean show_version = FALSE;
     gboolean show_list_dicts = FALSE;
     glib::StrArr use_dict_list;
-    gboolean non_interactive = FALSE;
     gboolean json_output = FALSE;
     gboolean no_fuzzy = FALSE;
     gboolean utf8_output = FALSE;
@@ -91,8 +99,6 @@ int main(int argc, char *argv[]) try {
         { "use-dict", 'u', 0, G_OPTION_ARG_STRING_ARRAY, get_addr(use_dict_list),
           _("for search use only dictionary with this bookname"),
           _("bookname") },
-        { "non-interactive", 'n', 0, G_OPTION_ARG_NONE, &non_interactive,
-          _("for use in scripts"), nullptr },
         { "json-output", 'j', 0, G_OPTION_ARG_NONE, &json_output,
           _("print the result formatted as JSON"), nullptr },
         { "exact-search", 'e', 0, G_OPTION_ARG_NONE, &no_fuzzy,
@@ -100,7 +106,7 @@ int main(int argc, char *argv[]) try {
         { "utf8-output", '0', 0, G_OPTION_ARG_NONE, &utf8_output,
           _("output must be in utf8"), nullptr },
         { "utf8-input", '1', 0, G_OPTION_ARG_NONE, &utf8_input,
-          _("input of sdcv in utf8"), nullptr },
+          _("input of sdwv in utf8"), nullptr },
         { "data-dir", '2', 0, G_OPTION_ARG_STRING, get_addr(opt_data_dir),
           _("use this directory as path to stardict data directory"),
           _("path/to/dir") },
@@ -124,7 +130,7 @@ int main(int argc, char *argv[]) try {
     }
 
     if (show_version) {
-        printf(_("Console version of Stardict, version %s\n"), gVersion);
+        printf(_("Web version of Stardict, version %s\n"), gVersion);
         return EXIT_SUCCESS;
     }
 
@@ -186,7 +192,7 @@ int main(int argc, char *argv[]) try {
             ++p;
         }
     } else {
-        const std::string odering_cfg_file = std::string(homedir) + G_DIR_SEPARATOR_S ".sdcv_ordering";
+        const std::string odering_cfg_file = std::string(homedir) + G_DIR_SEPARATOR_S ".sdwv_ordering";
         FILE *ordering_file = fopen(odering_cfg_file.c_str(), "r");
         if (ordering_file != nullptr) {
             std::string line;
@@ -206,22 +212,11 @@ int main(int argc, char *argv[]) try {
     Library lib(utf8_input, utf8_output, colorize, json_output, no_fuzzy);
     lib.load(dicts_dir_list, order_list, disable_list);
 
-    std::unique_ptr<IReadLine> io(create_readline_object());
     if (optind < argc) {
         for (int i = optind; i < argc; ++i)
-            if (!lib.process_phrase(argv[i], *io, non_interactive)) {
+            if (!lib.process_phrase(argv[i])) {
                 return EXIT_FAILURE;
             }
-    } else if (!non_interactive) {
-
-        std::string phrase;
-        while (io->read(_("Enter word or phrase: "), phrase)) {
-            if (!lib.process_phrase(phrase.c_str(), *io))
-                return EXIT_FAILURE;
-            phrase.clear();
-        }
-
-        putchar('\n');
     } else {
         fprintf(stderr, _("There are no words/phrases to translate.\n"));
     }
