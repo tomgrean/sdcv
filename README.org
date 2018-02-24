@@ -19,7 +19,7 @@ you can use "DESTDIR" variable to change installation path
 See sdwv man page for usage description.
 
 * Bugs
-If you find bug reports it via email to dushistov at mail dot ru. 
+If you find bug reports it via email to tomgrean at github dot com. 
 Be sure to include the word "sdwv" somewhere in the "Subject:" field.
 
 * Notes to developer
