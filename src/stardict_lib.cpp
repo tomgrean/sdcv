@@ -621,7 +621,7 @@ bool OffsetIndex::save_cache(const std::string &url, bool verbose)
             continue;
         fclose(out);
         if (verbose) {
-            printf("save to cache %s\n", url.c_str());
+            fprintf(stderr, "save to cache %s\n", url.c_str());
         }
         return true;
     }

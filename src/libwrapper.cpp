@@ -342,20 +342,62 @@ void Library::LookupData(const std::string &str, TSearchResultList &res_list)
 
 namespace
 {
-class sdcv_pager final
+class response_out final
 {
 public:
-    explicit sdcv_pager(bool ignore_env = false)
+    explicit response_out(const char *str, bool json = false) : json_(json)
     {
         output = stdout;
-        if (ignore_env) {
+        if (json_) {
+            fputc('[', stdout);
             return;
         }
+        fputs("<html><head>"
+        		"<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"
+        		"<title>Star Dictionary</title>"
+        		"<style>\n"
+        		".qw {\n"
+        		"	border: thin dashed grey;\n"
+        		"}\n"
+        		".res_definition {\n"
+        		"	width:80%;\n"
+        		"	table-layout: fixed;\n"
+        		"	border-left: thin dashed black;\n"
+        		"	border-right: thin dashed black;\n"
+        		"	padding-left: 5px;\n"
+        		"	padding-right: 5px;\n"
+        		"	padding-bottom: 5px;\n"
+        		"}\n"
+        		".res_word {\n"
+        		"	width:80%;\n"
+        		"	table-layout: fixed;\n"
+        		"	border: thin solid black;\n"
+        		"	padding-left: 5px;\n"
+        		"	padding-right: 5px;\n"
+        		"	padding-bottom: 5px;\n"
+        		"}\n"
+        		"</style>\n"
+        		"</head><body>"
+        		" <form action=\"/\" method=\"GET\">"
+        		"  word : <input class=\"qw\" id=\"qwt\" type=\"text\" name=\"w\" value=\""
+        		, output);
+        fputs(str, output);
+        fputs(
+        		"\"/>"
+        		" <input type=\"submit\" value=\"GO\"/>"
+        		" </form>"
+        		"<hr/>"
+        		, output);
     }
-    sdcv_pager(const sdcv_pager &) = delete;
-    sdcv_pager &operator=(const sdcv_pager &) = delete;
-    ~sdcv_pager()
+    response_out(const response_out &) = delete;
+    response_out &operator=(const response_out &) = delete;
+    ~response_out()
     {
+    	if (json_) {
+            fputc('[', stdout);
+    	} else {
+        	fputs("</body></html>", output);
+    	}
         if (output != stdout) {
             pclose(output);
         }
@@ -363,6 +405,7 @@ public:
     FILE *get_stream() { return output; }
 
 private:
+    bool json_;
     FILE *output;
 };
 }
@@ -472,11 +515,8 @@ bool Library::process_phrase(const char *loc_str)
     }
 
     bool first_result = true;
-    if (json_) {
-        fputc('[', stdout);
-    }
     if (!res_list.empty()) {
-		sdcv_pager pager(json_);
+		response_out pager(loc_str, json_);
 		print_search_result(pager.get_stream(), res_list, first_result);
     } else {
         std::string loc_str;
@@ -486,8 +526,5 @@ bool Library::process_phrase(const char *loc_str)
             printf(_("Nothing similar to %s, sorry :(\n"), utf8_output_ ? get_impl(str) : loc_str.c_str());
     }
 
-    if (json_) {
-        fputs("]\n", stdout);
-    }
     return true;
 }
