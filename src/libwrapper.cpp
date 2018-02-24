@@ -44,11 +44,11 @@ static const char ESC_LIGHT_GRAY[] = "<font color='gray'>";
 static const char ESC_BROWN[] = "<font color='brown'>";
 static const char ESC_GREEN[] = "<font color='green'>";
 
-static const char *SEARCH_TERM_VISFMT = ESC_BOLD;
-static const char *NAME_OF_DICT_VISFMT = ESC_BLUE;
 static const char *TRANSCRIPTION_VISFMT = ESC_BROWN;
 static const char *EXAMPLE_VISFMT = ESC_LIGHT_GRAY;
 static const char *ABR_VISFMT = ESC_GREEN;
+
+std::map<std::string, std::string> *Library::pbookname_to_ifo = nullptr;
 
 static std::string text2simplehtml(const char *str, guint32 &sec_size)
 {
@@ -74,7 +74,7 @@ static std::string text2simplehtml(const char *str, guint32 &sec_size)
     return res;
 }
 
-static std::string xdxf2text(const char *xstr, bool colorize_output, guint32 &sec_size)
+static std::string xdxf2text(const std::string &dictname, const char *xstr, bool colorize_output, guint32 &sec_size)
 {
     std::string res;
     const char *p = xstr;
@@ -96,16 +96,35 @@ static std::string xdxf2text(const char *xstr, bool colorize_output, guint32 &se
                 const char *end_p = strchr(p, '<');
                 if (end_p) {
                     const std::string targetRef(p, end_p - p);
+                    std::string file(Library::pbookname_to_ifo->at(dictname));
+                    std::string::size_type end = file.rfind(G_DIR_SEPARATOR);
+                    if (end != std::string::npos) {
+                    	std::string::size_type begin = file.rfind(G_DIR_SEPARATOR, end - 1);
+                    	if (begin == std::string::npos)
+                    		begin = 0;
+                    	file = file.substr(begin + 1, end - begin - 1);
+                    }
+                    if (file.length() <= 0 || file[0] == '/')
+                    	file = ".";
+
                     if (targetRef.find(".wav") != std::string::npos) {
                         // sound.
+#if 0
                         res += "<a href='";
+                        res += file;
+                        res += "/res/";
                         res += targetRef;
                         res += "'>&#128266;</a>";//emoji of loudspeaker
+#else
+                        res += "&#128266";//emoji of loudspeaker
+#endif
                         p = end_p - 1;
                         continue;
                     }
                     // assume image
                     res += "<img src='";
+                    res += file;
+                    res += "/res/";
                     res += targetRef;
                     res += "'>";
                     p = end_p - 1;
@@ -191,7 +210,7 @@ static std::string xdxf2text(const char *xstr, bool colorize_output, guint32 &se
     return res;
 }
 
-static std::string parse_data(const gchar *data, bool colorize_output)
+static std::string parse_data(const std::string &dictname, const gchar *data, bool colorize_output)
 {
     if (!data)
         return "";
@@ -230,7 +249,7 @@ static std::string parse_data(const gchar *data, bool colorize_output)
         case 'g': // pango markup data
         case 'x': // xdxf
             if (*p) {
-                res += xdxf2text(p, colorize_output, sec_size);
+                res += xdxf2text(dictname, p, colorize_output, sec_size);
             }
             sec_size++;
             break;
@@ -278,7 +297,7 @@ void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
             res_list.push_back(
                 TSearchResult(dict_name(idict),
                               poGetWord(ind, idict),
-                              parse_data(poGetWordData(ind, idict), colorize_output_)));
+                              parse_data(dict_name(idict), poGetWordData(ind, idict), colorize_output_)));
 }
 
 void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_list)
@@ -321,50 +340,6 @@ void Library::LookupData(const std::string &str, TSearchResultList &res_list)
         }
 }
 
-void Library::print_search_result(FILE *out, const TSearchResult &res, bool &first_result)
-{
-    std::string loc_bookname, loc_def, loc_exp;
-
-    if (!utf8_output_) {
-        loc_bookname = utf8_to_locale_ign_err(res.bookname);
-        loc_def = utf8_to_locale_ign_err(res.def);
-        loc_exp = utf8_to_locale_ign_err(res.exp);
-    }
-    if (json_) {
-        if (!first_result) {
-            fputs(",", out);
-        } else {
-            first_result = false;
-        }
-        fprintf(out, "{\"dict\": \"%s\",\"word\":\"%s\",\"definition\":\"%s\"}",
-                json_escape_string(res.bookname).c_str(),
-                json_escape_string(res.def).c_str(),
-                json_escape_string(res.exp).c_str());
-
-    } else {
-        if (colorize_output_)
-            fprintf(out,
-                "-->%s%s%s\n"
-                "-->%s%s%s\n"
-                "%s\n\n",
-                NAME_OF_DICT_VISFMT,
-                utf8_output_ ? res.bookname.c_str() : loc_bookname.c_str(),
-                ESC_END,
-                SEARCH_TERM_VISFMT,
-                utf8_output_ ? res.def.c_str() : loc_def.c_str(),
-                ESC_END_B,
-                utf8_output_ ? res.exp.c_str() : loc_exp.c_str());
-        else
-            fprintf(out,
-                "-->%s\n"
-                "-->%s\n"
-                "%s\n\n",
-                utf8_output_ ? res.bookname.c_str() : loc_bookname.c_str(),
-                utf8_output_ ? res.def.c_str() : loc_def.c_str(),
-                utf8_output_ ? res.exp.c_str() : loc_exp.c_str());
-    }
-}
-
 namespace
 {
 class sdcv_pager final
@@ -395,6 +370,62 @@ public:
 private:
     FILE *output;
 };
+}
+
+void Library::print_search_result(FILE *out, TSearchResultList &res_list, bool &first_result)
+{
+	if (!json_ && colorize_output_)
+		fprintf(out, "<ol>");
+	for (TSearchResult &res : res_list) {
+		if (utf8_output_) {
+			res.bookname = utf8_to_locale_ign_err(res.bookname);
+			res.def = utf8_to_locale_ign_err(res.def);
+			res.exp = utf8_to_locale_ign_err(res.exp);
+		}
+		if (!json_ && colorize_output_) {
+			// put list-of-contents
+			fprintf(out, "<li><a href='#%s'>%s : %s</a>\n",
+					res.idname.c_str(),
+					res.def.c_str(),
+					res.bookname.c_str());
+		}
+	}
+	if (!json_ && colorize_output_)
+		fprintf(out, "</ol>");
+
+	for (const TSearchResult &res : res_list) {
+		if (json_) {
+			if (!first_result) {
+				fputs(",", out);
+			} else {
+				first_result = false;
+			}
+			fprintf(out, "{\"dict\": \"%s\",\"word\":\"%s\",\"definition\":\"%s\"}",
+					json_escape_string(res.bookname).c_str(),
+					json_escape_string(res.def).c_str(),
+					json_escape_string(res.exp).c_str());
+
+		} else {
+			if (colorize_output_) {//HTML <DIV> output
+				fprintf(out,
+					"<div id='%s' class='res_word'>%s"
+					" (%s)</div><div class='res_definition'>"
+					"%s</div>",
+					res.idname.c_str(),
+					res.bookname.c_str(),
+					res.def.c_str(),
+					res.exp.c_str());
+			} else {
+				fprintf(out,
+					"-->%s\n"
+					"-->%s\n"
+					"%s\n\n",
+					res.bookname.c_str(),
+					res.def.c_str(),
+					res.exp.c_str());
+			}
+		}
+	}
 }
 
 bool Library::process_phrase(const char *loc_str, IReadLine &io, bool force)
@@ -452,72 +483,8 @@ bool Library::process_phrase(const char *loc_str, IReadLine &io, bool force)
         fputc('[', stdout);
     }
     if (!res_list.empty()) {
-        /* try to be more clever, if there are
-           one or zero results per dictionary show all
-        */
-        bool show_all_results = true;
-        typedef std::map<std::string, int, std::less<std::string>> DictResMap;
-        if (!force) {
-            DictResMap res_per_dict;
-            for (const TSearchResult &search_res : res_list) {
-                auto r = res_per_dict.equal_range(search_res.bookname);
-                DictResMap tmp(r.first, r.second);
-                if (tmp.empty()) //there are no yet such bookname in map
-                    res_per_dict.insert(DictResMap::value_type(search_res.bookname, 1));
-                else {
-                    ++((tmp.begin())->second);
-                    if (tmp.begin()->second > 1) {
-                        show_all_results = false;
-                        break;
-                    }
-                }
-            }
-        } //if (!force)
-
-        if (!show_all_results && !force) {
-            if (!json_) {
-                printf(_("Found %zu items, similar to %s.\n"), res_list.size(),
-                       utf8_output_ ? get_impl(str) : utf8_to_locale_ign_err(get_impl(str)).c_str());
-            }
-            for (size_t i = 0; i < res_list.size(); ++i) {
-                const std::string loc_bookname = utf8_to_locale_ign_err(res_list[i].bookname);
-                const std::string loc_def = utf8_to_locale_ign_err(res_list[i].def);
-                printf("%zu)%s%s%s-->%s%s%s\n", i,
-                       colorize_output_ ? NAME_OF_DICT_VISFMT : "",
-                       utf8_output_ ? res_list[i].bookname.c_str() : loc_bookname.c_str(),
-                       colorize_output_ ? ESC_END : "",
-                       colorize_output_ ? SEARCH_TERM_VISFMT : "",
-                       utf8_output_ ? res_list[i].def.c_str() : loc_def.c_str(),
-                       colorize_output_ ? ESC_END_B : "");
-            }
-            int choise;
-            std::unique_ptr<IReadLine> choice_readline(create_readline_object());
-            for (;;) {
-                std::string str_choise;
-                choice_readline->read(_("Your choice[-1 to abort]: "), str_choise);
-                sscanf(str_choise.c_str(), "%d", &choise);
-                if (choise >= 0 && choise < int(res_list.size())) {
-                    sdcv_pager pager;
-                    io.add_to_history(res_list[choise].def.c_str());
-                    print_search_result(pager.get_stream(), res_list[choise], first_result);
-                    break;
-                } else if (choise == -1) {
-                    break;
-                } else
-                    printf(_("Invalid choice.\nIt must be from 0 to %zu or -1.\n"),
-                           res_list.size() - 1);
-            }
-        } else {
-            sdcv_pager pager(force || json_);
-            if (!json_) {
-                fprintf(pager.get_stream(), _("Found %zu items, similar to %s.\n"),
-                        res_list.size(), utf8_output_ ? get_impl(str) : utf8_to_locale_ign_err(get_impl(str)).c_str());
-            }
-            for (const TSearchResult &search_res : res_list) {
-                print_search_result(pager.get_stream(), search_res, first_result);
-            }
-        }
-
+		sdcv_pager pager(force || json_);
+		print_search_result(pager.get_stream(), res_list, first_result);
     } else {
         std::string loc_str;
         if (!utf8_output_)

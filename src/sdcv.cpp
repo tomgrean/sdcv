@@ -202,6 +202,7 @@ int main(int argc, char *argv[]) try {
         fprintf(stderr, _("g_mkdir failed: %s\n"), strerror(errno));
     }
 
+    Library::pbookname_to_ifo = &bookname_to_ifo;
     Library lib(utf8_input, utf8_output, colorize, json_output, no_fuzzy);
     lib.load(dicts_dir_list, order_list, disable_list);
 

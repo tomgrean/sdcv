@@ -12,12 +12,20 @@ struct TSearchResult {
     std::string bookname;
     std::string def;
     std::string exp;
+    std::string idname;//TODO unique id.
 
     TSearchResult(const std::string &bookname_, const std::string &def_, const std::string &exp_)
         : bookname(bookname_)
         , def(def_)
         , exp(exp_)
     {
+    	idname = bookname + ".." + def;
+    	std::string::size_type index;
+    	for (const char ch : {'\'', '\"', ' ', '\t'}) {
+			while ((index = idname.find(ch)) != std::string::npos) {
+				idname.replace(index, 1, 1, '_');
+			}
+		}
     }
 };
 
@@ -28,6 +36,7 @@ typedef std::vector<TSearchResult> TSearchResultList;
 class Library : public Libs
 {
 public:
+    static std::map<std::string, std::string> *pbookname_to_ifo;
     Library(bool uinput, bool uoutput, bool colorize_output, bool use_json, bool no_fuzzy)
         : utf8_input_(uinput)
         , utf8_output_(uoutput)
@@ -50,5 +59,6 @@ private:
     void LookupWithFuzzy(const std::string &str, TSearchResultList &res_list);
     void LookupWithRule(const std::string &str, TSearchResultList &res_lsit);
     void LookupData(const std::string &str, TSearchResultList &res_list);
-    void print_search_result(FILE *out, const TSearchResult &res, bool &first_result);
+    void print_search_result(FILE *out, TSearchResultList &res_list, bool &first_result);
 };
+
