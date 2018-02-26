@@ -32,13 +32,13 @@
 
 #include "libwrapper.hpp"
 
-static const char ESC_BLUE[] = "<font color='blue'>";
+//static const char ESC_BLUE[] = "<font color='blue'>";
 static const char ESC_END[] = "</font>";
 static const char ESC_END_B[] = "</b>";
 static const char ESC_END_I[] = "</i>";
-static const char ESC_END_U[] = "</u>";
+//static const char ESC_END_U[] = "</u>";
 static const char ESC_BOLD[] = "<b>";
-static const char ESC_UNDERLINE[] = "<u>";
+//static const char ESC_UNDERLINE[] = "<u>";
 static const char ESC_ITALIC[] = "<i>";
 static const char ESC_LIGHT_GRAY[] = "<font color='gray'>";
 static const char ESC_BROWN[] = "<font color='brown'>";
