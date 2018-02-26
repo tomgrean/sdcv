@@ -1393,11 +1393,11 @@ bool Libs::LookupSimilarWord(const gchar *sWord, glong &iWordIndex, int iLib)
     if (bFound)
         iWordIndex = iIndex;
 #if 0
-	else {
-		//don't change iWordIndex here.
-		//when LookupSimilarWord all failed too, we want to use the old LookupWord index to list words.
-		//iWordIndex = INVALID_INDEX;
-	}
+    else {
+        //don't change iWordIndex here.
+        //when LookupSimilarWord all failed too, we want to use the old LookupWord index to list words.
+        //iWordIndex = INVALID_INDEX;
+    }
 #endif
     return bFound;
 }

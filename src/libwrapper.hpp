@@ -18,13 +18,13 @@ struct TSearchResult {
         , def(def_)
         , exp(exp_)
     {
-    	idname = bookname + ".." + def;
-    	std::string::size_type index;
-    	for (const char ch : {'\'', '\"', ' ', '\t'}) {
-			while ((index = idname.find(ch)) != std::string::npos) {
-				idname.replace(index, 1, 1, '_');
-			}
-		}
+        idname = bookname + ".." + def;
+        std::string::size_type index;
+        for (const char ch : {'\'', '\"', ' ', '\t'}) {
+            while ((index = idname.find(ch)) != std::string::npos) {
+                idname.replace(index, 1, 1, '_');
+            }
+        }
     }
 };
 
@@ -46,18 +46,32 @@ public:
         setFuzzy(!no_fuzzy);
     }
 
-    bool process_phrase(const char *loc_str);
+    const std::string process_phrase(const char *loc_str, bool buffer_out);
 
 private:
-    bool utf8_input_;
-    bool utf8_output_;
-    bool colorize_output_;
-    bool json_;
+    const bool utf8_input_;
+    const bool utf8_output_;
+    const bool colorize_output_;
+    const bool json_;
+    class response_out final
+    {
+    public:
+        explicit response_out(const char *str, Library *lib, bool bufferout);
+        response_out(const response_out &) = delete;
+        response_out &operator=(const response_out &) = delete;
+        ~response_out();
+        response_out &operator <<(const std::string &content);
+        std::string get_content();
+        void print_search_result(TSearchResultList &res_list);
+    private:
+        Library *lib_;
+        bool bufferout_;
+        std::string buffer;
+    };
 
     void SimpleLookup(const std::string &str, TSearchResultList &res_list);
     void LookupWithFuzzy(const std::string &str, TSearchResultList &res_list);
     void LookupWithRule(const std::string &str, TSearchResultList &res_lsit);
     void LookupData(const std::string &str, TSearchResultList &res_list);
-    void print_search_result(FILE *out, TSearchResultList &res_list, bool &first_result);
 };
 

@@ -57,17 +57,17 @@ static std::string text2simplehtml(const char *str, guint32 &sec_size)
     for (; *p; ++p) {
         switch (*p) {
         case '\n':
-        	res += "<br>\n";
-        	break;
+            res += "<br>\n";
+            break;
         case '<':
-        	res += "&lt;";
-        	break;
+            res += "&lt;";
+            break;
         case '>':
-        	res += "&gt;";
-        	break;
+            res += "&gt;";
+            break;
         default:
-        	res += *p;
-        	break;
+            res += *p;
+            break;
         }
     }
     sec_size = p - str;
@@ -99,13 +99,13 @@ static std::string xdxf2text(const std::string &dictname, const char *xstr, bool
                     std::string file(Library::pbookname_to_ifo->at(dictname));
                     std::string::size_type end = file.rfind(G_DIR_SEPARATOR);
                     if (end != std::string::npos) {
-                    	std::string::size_type begin = file.rfind(G_DIR_SEPARATOR, end - 1);
-                    	if (begin == std::string::npos)
-                    		begin = 0;
-                    	file = file.substr(begin + 1, end - begin - 1);
+                        std::string::size_type begin = file.rfind(G_DIR_SEPARATOR, end - 1);
+                        if (begin == std::string::npos)
+                            begin = 0;
+                        file = file.substr(begin + 1, end - begin - 1);
                     }
                     if (file.length() <= 0 || file[0] == '/')
-                    	file = ".";
+                        file = ".";
 
                     if (targetRef.find(".wav") != std::string::npos) {
                         // sound.
@@ -145,63 +145,63 @@ static std::string xdxf2text(const std::string &dictname, const char *xstr, bool
         const std::string name(p + 1, next - p - 1);
 
         if (name == "k") {
-			const char *begin = next;
-			if ((next = strstr(begin, "</k>")) != nullptr)
-				next += sizeof("</k>") - 1 - 1;
-			else
-				next = begin;
+            const char *begin = next;
+            if ((next = strstr(begin, "</k>")) != nullptr)
+                next += sizeof("</k>") - 1 - 1;
+            else
+                next = begin;
         }
         if (colorize_output) {
-			if (name == "abr") {
-				res += ABR_VISFMT;
-			} else if (name == "/abr") {
-				res += ESC_END;
-			} else if (name == "kref") {
-					res += "<a href='?w=";
-					tagFlag = 1;//kref | a href
-			} else if (name == "/kref") {
-					res += "</a>";
-			} else if (name == "rref") {
-					tagFlag = 2;//rref | image, sound
-			} else if (name == "/rref") {
-					//nothing here.
-			} else if (name == "b") {
-				res += ESC_BOLD;
-			} else if (name == "/b") {
-				res += ESC_END_B;
-			} else if (name == "i") {
-				res += ESC_ITALIC;
-			} else if (name == "/i") {
-				res += ESC_END_I;
-			} else if (name == "tr") {
-				res += TRANSCRIPTION_VISFMT;
-				res += '[';
-			} else if (name == "/tr") {
-				res += ']';
-				res += ESC_END;
-			} else if (name == "ex") {
-				res += EXAMPLE_VISFMT;
-			} else if (name == "/ex") {
-				res += ESC_END;
-			} else if (!name.empty() && name[0] == 'c' && name != "co") {
-				std::string::size_type pos = name.find('=');
-				if (pos != std::string::npos) {
-					pos += 2;
-					std::string::size_type end_pos = name.find('\"', pos);
-					const std::string color(name, pos, end_pos - pos);
-					res += "<font color='" + color + "'>";
-				} else {
-					res += ESC_GREEN;
-				}
-			} else if (name == "/c") {
-				res += ESC_END;
-			}
+            if (name == "abr") {
+                res += ABR_VISFMT;
+            } else if (name == "/abr") {
+                res += ESC_END;
+            } else if (name == "kref") {
+                    res += "<a href='?w=";
+                    tagFlag = 1;//kref | a href
+            } else if (name == "/kref") {
+                    res += "</a>";
+            } else if (name == "rref") {
+                    tagFlag = 2;//rref | image, sound
+            } else if (name == "/rref") {
+                    //nothing here.
+            } else if (name == "b") {
+                res += ESC_BOLD;
+            } else if (name == "/b") {
+                res += ESC_END_B;
+            } else if (name == "i") {
+                res += ESC_ITALIC;
+            } else if (name == "/i") {
+                res += ESC_END_I;
+            } else if (name == "tr") {
+                res += TRANSCRIPTION_VISFMT;
+                res += '[';
+            } else if (name == "/tr") {
+                res += ']';
+                res += ESC_END;
+            } else if (name == "ex") {
+                res += EXAMPLE_VISFMT;
+            } else if (name == "/ex") {
+                res += ESC_END;
+            } else if (!name.empty() && name[0] == 'c' && name != "co") {
+                std::string::size_type pos = name.find('=');
+                if (pos != std::string::npos) {
+                    pos += 2;
+                    std::string::size_type end_pos = name.find('\"', pos);
+                    const std::string color(name, pos, end_pos - pos);
+                    res += "<font color='" + color + "'>";
+                } else {
+                    res += ESC_GREEN;
+                }
+            } else if (name == "/c") {
+                res += ESC_END;
+            }
         } else {
-        	if (name == "tr") {
-				res += '[';
-			} else if (name == "/tr") {
-				res += ']';
-			}
+            if (name == "tr") {
+                res += '[';
+            } else if (name == "/tr") {
+                res += ']';
+            }
         }
 
         p = next;
@@ -340,136 +340,142 @@ void Library::LookupData(const std::string &str, TSearchResultList &res_list)
         }
 }
 
-namespace
+Library::response_out::response_out(const char *str, Library *lib, bool bufferout) : lib_(lib), bufferout_(bufferout)
 {
-class response_out final
-{
-public:
-    explicit response_out(const char *str, bool json = false) : json_(json)
-    {
-        output = stdout;
-        if (json_) {
+    if (lib->json_) {
+        if (bufferout_)
+            buffer = "[";
+        else
             fputc('[', stdout);
-            return;
-        }
-        fputs("<html><head>"
-        		"<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"
-        		"<title>Star Dictionary</title>"
-        		"<style>\n"
-        		".qw {\n"
-        		"	border: thin dashed grey;\n"
-        		"}\n"
-        		".res_definition {\n"
-        		"	width:80%;\n"
-        		"	table-layout: fixed;\n"
-        		"	border-left: thin dashed black;\n"
-        		"	border-right: thin dashed black;\n"
-        		"	padding-left: 5px;\n"
-        		"	padding-right: 5px;\n"
-        		"	padding-bottom: 5px;\n"
-        		"}\n"
-        		".res_word {\n"
-        		"	width:80%;\n"
-        		"	table-layout: fixed;\n"
-        		"	border: thin solid black;\n"
-        		"	padding-left: 5px;\n"
-        		"	padding-right: 5px;\n"
-        		"	padding-bottom: 5px;\n"
-        		"}\n"
-        		"</style>\n"
-        		"</head><body>"
-        		" <form action=\"/\" method=\"GET\">"
-        		"  word : <input class=\"qw\" id=\"qwt\" type=\"text\" name=\"w\" value=\""
-        		, output);
-        fputs(str, output);
-        fputs(
-        		"\"/>"
-        		" <input type=\"submit\" value=\"GO\"/>"
-        		" </form>"
-        		"<hr/>"
-        		, output);
+        return;
     }
-    response_out(const response_out &) = delete;
-    response_out &operator=(const response_out &) = delete;
-    ~response_out()
-    {
-    	if (json_) {
-            fputc('[', stdout);
-    	} else {
-        	fputs("</body></html>", output);
-    	}
-        if (output != stdout) {
-            pclose(output);
+    if (lib_->colorize_output_) {
+        std::string headerhtml1 = "<html><head>"
+                "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"
+                "<title>Star Dictionary</title>"
+                "<style>\n"
+                ".qw {\n"
+                "    border: thin dashed grey;\n"
+                "}\n"
+                ".res_definition {\n"
+                "    width:80%;\n"
+                "    table-layout: fixed;\n"
+                "    border-left: thin dashed black;\n"
+                "    border-right: thin dashed black;\n"
+                "    padding-left: 5px;\n"
+                "    padding-right: 5px;\n"
+                "    padding-bottom: 5px;\n"
+                "}\n"
+                ".res_word {\n"
+                "    width:80%;\n"
+                "    table-layout: fixed;\n"
+                "    border: thin solid black;\n"
+                "    padding-left: 5px;\n"
+                "    padding-right: 5px;\n"
+                "    padding-bottom: 5px;\n"
+                "}\n"
+                "</style>\n"
+                "</head><body>"
+                " <form action=\"/\" method=\"GET\">"
+                "  word : <input class=\"qw\" id=\"qwt\" type=\"text\" name=\"w\" value=\"";
+        std::string headerhtml2 = "\"/>"
+                " <input type=\"submit\" value=\"GO\"/>"
+                " </form>"
+                "<hr/>";
+        if (bufferout_) {
+            buffer = headerhtml1 + str + headerhtml2;
+        } else {
+            fputs(headerhtml1.c_str(), stdout);
+            fputs(str, stdout);
+            fputs(headerhtml2.c_str(), stdout);
         }
     }
-    FILE *get_stream() { return output; }
-
-private:
-    bool json_;
-    FILE *output;
-};
+}
+Library::response_out::~response_out()
+{
+    if (lib_->json_) {
+        fputc(']', stdout);
+    } else if (lib_->colorize_output_) {
+        fputs("</body></html>", stdout);
+    }
+}
+Library::response_out &Library::response_out::operator <<(const std::string &content) {
+    if (bufferout_) {
+        buffer += content;
+    } else {
+        fputs(content.c_str(), stdout);
+    }
+    return *this;
+}
+std::string Library::response_out::get_content() {
+    std::string content;
+    if (!bufferout_) {
+        return content;
+    }
+    content = buffer;
+    buffer = std::string();
+    if (lib_->json_) {
+        content += ']';
+    } else if (lib_->colorize_output_) {
+        content += "</body></html>";
+    }
+    return content;
 }
 
-void Library::print_search_result(FILE *out, TSearchResultList &res_list, bool &first_result)
+void Library::response_out::print_search_result(TSearchResultList &res_list)
 {
-	if (!json_ && colorize_output_)
-		fprintf(out, "<ol>");
-	for (TSearchResult &res : res_list) {
-		if (utf8_output_) {
-			res.bookname = utf8_to_locale_ign_err(res.bookname);
-			res.def = utf8_to_locale_ign_err(res.def);
-			res.exp = utf8_to_locale_ign_err(res.exp);
-		}
-		if (!json_ && colorize_output_) {
-			// put list-of-contents
-			fprintf(out, "<li><a href='#%s'>%s : %s</a>\n",
-					res.idname.c_str(),
-					res.def.c_str(),
-					res.bookname.c_str());
-		}
-	}
-	if (!json_ && colorize_output_)
-		fprintf(out, "</ol>");
+    bool first_result = true;
+    response_out &out = *this;
+    if (!lib_->json_ && lib_->colorize_output_)
+        out << "<ol>";
+    for (TSearchResult &res : res_list) {
+        if (lib_->utf8_output_) {
+            res.bookname = utf8_to_locale_ign_err(res.bookname);
+            res.def = utf8_to_locale_ign_err(res.def);
+            res.exp = utf8_to_locale_ign_err(res.exp);
+        }
+        if (!lib_->json_ && lib_->colorize_output_) {
+            // put list-of-contents
+            out << "<li><a href='#" << res.idname << "'>"
+                << res.def << " : " << res.bookname
+                << "</a></li>\n";
+        }
+    }
+    if (!lib_->json_ && lib_->colorize_output_)
+        out << "</ol>";
 
-	for (const TSearchResult &res : res_list) {
-		if (json_) {
-			if (!first_result) {
-				fputs(",", out);
-			} else {
-				first_result = false;
-			}
-			fprintf(out, "{\"dict\": \"%s\",\"word\":\"%s\",\"definition\":\"%s\"}",
-					json_escape_string(res.bookname).c_str(),
-					json_escape_string(res.def).c_str(),
-					json_escape_string(res.exp).c_str());
+    for (const TSearchResult &res : res_list) {
+        if (lib_->json_) {
+            if (!first_result) {
+                out << ",";
+            } else {
+                first_result = false;
+            }
+            out << "{\"dict\": \"" << json_escape_string(res.bookname)
+                    << "\",\"word\":\"" << json_escape_string(res.def)
+                    << "\",\"definition\":\"" << json_escape_string(res.exp)
+                    << "\"}";
 
-		} else {
-			if (colorize_output_) {//HTML <DIV> output
-				fprintf(out,
-					"<div id='%s' class='res_word'>%s"
-					" (%s)</div><div class='res_definition'>"
-					"%s</div>",
-					res.idname.c_str(),
-					res.bookname.c_str(),
-					res.def.c_str(),
-					res.exp.c_str());
-			} else {
-				fprintf(out,
-					"-->%s\n"
-					"-->%s\n"
-					"%s\n\n",
-					res.bookname.c_str(),
-					res.def.c_str(),
-					res.exp.c_str());
-			}
-		}
-	}
+        } else {
+            if (lib_->colorize_output_) {//HTML <DIV> output
+                out << "<div id='"<< res.idname << "' class='res_word'>"
+                    << res.bookname << " ("<< res.def
+                    << ")</div><div class='res_definition'>"
+                    << res.exp << "</div>";
+            } else {
+                out << "-->" << res.bookname
+                    << "\n-->" << res.def
+                    << "\n"<< res.exp << "\n\n";
+            }
+        }
+    }
 }
 
-bool Library::process_phrase(const char *loc_str)
+const std::string Library::process_phrase(const char *loc_str, bool buffer_out)
 {
+    response_out outputer(loc_str, this, buffer_out);
     if (nullptr == loc_str)
-        return true;
+        return outputer.get_content();
 
     std::string query;
 
@@ -487,11 +493,11 @@ bool Library::process_phrase(const char *loc_str)
     if (nullptr == get_impl(str)) {
         fprintf(stderr, _("Can not convert %s to utf8.\n"), loc_str);
         fprintf(stderr, "%s\n", err->message);
-        return false;
+        return std::string();
     }
 
     if (str[0] == '\0')
-        return true;
+        return outputer.get_content();
 
     TSearchResultList res_list;
 
@@ -514,17 +520,16 @@ bool Library::process_phrase(const char *loc_str)
         /*nothing*/;
     }
 
-    bool first_result = true;
     if (!res_list.empty()) {
-		response_out pager(loc_str, json_);
-		print_search_result(pager.get_stream(), res_list, first_result);
+        outputer.print_search_result(res_list);
     } else {
         std::string loc_str;
         if (!utf8_output_)
             loc_str = utf8_to_locale_ign_err(get_impl(str));
-        if (!json_)
-            printf(_("Nothing similar to %s, sorry :(\n"), utf8_output_ ? get_impl(str) : loc_str.c_str());
+        if (!json_) {
+            outputer << ("Nothing similar to ") << (loc_str);
+        }
     }
 
-    return true;
+    return outputer.get_content();;
 }
