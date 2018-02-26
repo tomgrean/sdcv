@@ -70,7 +70,6 @@ using StrArr = ResourceWrapper<gchar *, gchar *, free_str_array>;
 }
 
 static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json);
-static void res_handler(const httplib::Request &req, httplib::Response &res);
 
 int main(int argc, char *argv[]) try {
     setlocale(LC_ALL, "");
@@ -225,11 +224,12 @@ int main(int argc, char *argv[]) try {
             }
     } else if (listen_port > 0) {
         httplib::Server serv;
+        serv.set_base_dir(data_dir.c_str());
         serv.get("/", [&](const httplib::Request &req, httplib::Response &res) {
             std::string result = lib.process_phrase(req.get_param_value("w").c_str(), true);
             res.set_content(result, "text/html");
         });
-        serv.get("/.*/res/.*", res_handler);
+        //serv.get("/.*/res/.*", Ser);
         serv.listen("127.0.0.1", (int)listen_port);
     } else {
         fprintf(stderr, _("There are no words/phrases to translate.\n"));
@@ -267,9 +267,4 @@ static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_js
                   });
     if (use_json)
         fputs("]\n", stdout);
-}
-
-static void res_handler(const httplib::Request &req, httplib::Response &res)
-{
-
 }
