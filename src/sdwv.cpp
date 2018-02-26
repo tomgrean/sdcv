@@ -133,6 +133,10 @@ int main(int argc, char *argv[]) try {
                 error->message);
         return EXIT_FAILURE;
     }
+    if (listen_port > 0 && !colorize) {
+    	fprintf(stderr, _("-p implies -c.\n"));
+    	colorize = TRUE;
+    }
 
     if (show_version) {
         printf(_("Web version of Stardict, version %s\n"), gVersion);
@@ -232,7 +236,7 @@ int main(int argc, char *argv[]) try {
         //serv.get("/.*/res/.*", Ser);
         serv.listen("127.0.0.1", (int)listen_port);
     } else {
-        fprintf(stderr, _("There are no words/phrases to translate.\n"));
+        fprintf(stderr, _("There is no word.\n"));
     }
     return EXIT_SUCCESS;
 } catch (const std::exception &ex) {
