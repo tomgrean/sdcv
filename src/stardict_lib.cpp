@@ -591,7 +591,7 @@ std::list<std::string> OffsetIndex::get_cache_variant(const std::string &url)
     if (!g_file_test(g_get_user_cache_dir(), G_FILE_TEST_EXISTS) && g_mkdir(g_get_user_cache_dir(), 0700) == -1)
         return res;
 
-    const std::string cache_dir = std::string(g_get_user_cache_dir()) + G_DIR_SEPARATOR_S + "sdcv";
+    const std::string cache_dir = std::string(g_get_user_cache_dir()) + G_DIR_SEPARATOR_S + "sdwv";
 
     if (!g_file_test(cache_dir.c_str(), G_FILE_TEST_EXISTS)) {
         if (g_mkdir(cache_dir.c_str(), 0700) == -1)

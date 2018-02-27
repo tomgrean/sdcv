@@ -1,6 +1,6 @@
 /*
- * This file part of sdcv - console version of Stardict program
- * http://sdcv.sourceforge.net
+ * This file part of sdwv - console version of Stardict program
+ * https://github.com/tomgrean/sdwv
  * Copyright (C) 2005-2006 Evgeniy <dushistov@mail.ru>
  *
  * This program is free software; you can redistribute it and/or modify
