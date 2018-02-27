@@ -32,6 +32,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <getopt.h>
 
 #include "libwrapper.hpp"
 #include "utils.hpp"
@@ -56,7 +57,7 @@ static bool stdio_getline(FILE *in, std::string &str)
 static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json);
 
 int main(int argc, char *argv[]) try {
-    bool show_version = false;
+    int show_v1_h2 = 0;
     bool show_list_dicts = false;
     std::string use_dict_list;
     bool json_output = false;
@@ -66,59 +67,123 @@ int main(int argc, char *argv[]) try {
     bool colorize = false;
     int listen_port = -1;
 
-    const GOptionEntry entries[] = {
-        { "version", 'v', 0, G_OPTION_ARG_NONE, &show_version,
-          _("display version information and exit"), nullptr },
-        { "list-dicts", 'l', 0, G_OPTION_ARG_NONE, &show_list_dicts,
-          _("display list of available dictionaries and exit"), nullptr },
-        { "use-dict", 'u', 0, G_OPTION_ARG_STRING_ARRAY, get_addr(use_dict_list),
-          _("for search use only dictionary with this bookname"),
-          _("bookname") },
-        { "json-output", 'j', 0, G_OPTION_ARG_NONE, &json_output,
-          _("print the result formatted as JSON"), nullptr },
-        { "exact-search", 'e', 0, G_OPTION_ARG_NONE, &no_fuzzy,
-          _("do not fuzzy-search for similar words, only return exact matches"), nullptr },
-        { "utf8-output", '0', 0, G_OPTION_ARG_NONE, &utf8_output,
-          _("output must be in utf8"), nullptr },
-        { "utf8-input", '1', 0, G_OPTION_ARG_NONE, &utf8_input,
-          _("input of sdwv in utf8"), nullptr },
-        { "data-dir", '2', 0, G_OPTION_ARG_STRING, get_addr(opt_data_dir),
-          _("use this directory as path to stardict data directory"),
-          _("path/to/dir") },
-        { "only-data-dir", 'x', 0, G_OPTION_ARG_NONE, &only_data_dir,
-          _("only use the dictionaries in data-dir, do not search in user and system directories"), nullptr },
-        { "color", 'c', 0, G_OPTION_ARG_NONE, &colorize,
-          _("colorize the output"), nullptr },
-        { "port", 'p', 0, G_OPTION_ARG_INT, &listen_port,
-          _("the port to listen"),
-          _("8888") },
-        {},
-    };
+    if (argc > 1) {
+        int c, arg;
 
-    glib::Error error;
-    GOptionContext *context = g_option_context_new(_(" words"));
-    g_option_context_set_help_enabled(context, true);
-    g_option_context_add_main_entries(context, entries, nullptr);
-    const bool parse_res = g_option_context_parse(context, &argc, &argv, get_addr(error));
-    g_option_context_free(context);
-    if (!parse_res) {
-        fprintf(stderr, "Invalid command line arguments: %s\n",
-                error->message);
-        return EXIT_FAILURE;
-    }
-    if (listen_port > 0 && !colorize) {
-    	fprintf(stderr, "-p implies -c.\n");
-    	colorize = true;
-    }
+        while (1) {
+            int option_index = 0;
+            arg = 0;
+            static struct option long_options[] = {
+                {"help",          no_argument,       0,  'h' },
+                {"version",       no_argument,       0,  'v' },
+                {"list-dicts",    no_argument,       0,  'l' },
+                {"use-dict",      required_argument, 0,  'u' },
+                {"json-output",   no_argument,       0,  'j' },
+                {"exact-search",  no_argument,       0,  'e' },
+                {"data-dir",      required_argument, 0,  '2' },
+                {"only-data-dir", no_argument,       0,  'x' },
+                {"color",         no_argument,       0,  'c' },
+                {"port",          required_argument, 0,  'p' },
+                {0, 0, 0, 0 }
+            };
 
-    if (show_version) {
+            c = getopt_long(argc, argv, "hvlu:je2:xcp",
+                     long_options, &option_index);
+            if (c == -1)
+                break;
+
+            switch (c) {
+            case 'h':
+            	show_v1_h2 = 2;
+            	break;
+            case 'v':
+            	show_v1_h2 = 1;
+            	break;
+            case 'l':
+                show_list_dicts = true;
+                break;
+            case 'u':
+            	arg = 1;
+            	if (optarg)
+            		use_dict_list = optarg;
+            	else
+            		fprintf(stderr, "Omitting arg to '-%c'.\n", c);
+                break;
+            case 'j':
+                json_output = true;
+                break;
+            case 'e':
+                no_fuzzy = true;
+                break;
+            case '2':
+            	arg = 1;
+            	if (optarg)
+            		opt_data_dir = optarg;
+            	else
+            		fprintf(stderr, "Omitting arg to '-%c'.\n", c);
+                break;
+            case 'x':
+            	only_data_dir = true;
+            	break;
+            case 'c':
+            	colorize = true;
+            	break;
+            case 'p':
+            	arg = 1;
+            	if (optarg)
+            		listen_port = (int)strtol(optarg, NULL, 10);
+            	else
+            		listen_port = 8888;
+            	break;
+            case '?':
+                break;
+
+            default:
+                printf("?? getopt returned character code 0%o ??\n", c);
+            }
+        }
+
+        if (arg) {
+        	optind++;
+        }
+
+		if (listen_port > 0 && !colorize) {
+			fprintf(stderr, "-p implies -c.\n");
+			colorize = true;
+		}
+    } else {
+    	show_v1_h2 = 2;
+    }
+    if (show_v1_h2 == 1) {
         printf("Web version of Stardict, version %s\n", gVersion);
+        return EXIT_SUCCESS;
+    } else if (show_v1_h2 == 2) {
+    	puts(
+    			"Usage:\n"
+    			"  sdwv [OPTION...]  words\n"
+    			"\n"
+    			"Help Options:\n"
+    			"  -h, --help                     Show help options\n"
+    			"\n"
+    			"Application Options:\n"
+    			"  -v, --version                  display version information and exit\n"
+    			"  -l, --list-dicts               display list of available dictionaries and exit\n"
+    			"  -u, --use-dict                 for search use only dictionary with this bookname\n"
+    			"  -j, --json-output              print the result formatted as JSON\n"
+    			"  -e, --exact-search             do not fuzzy-search for similar words, only return exact matches\n"
+    			"  -0, --utf8-output              output must be in utf8\n"
+    			"  -1, --utf8-input               input of sdwv in utf8\n"
+    			"  -2, --data-dir                 use this directory as path to stardict data directory\n"
+    			"  -x, --only-data-dir            only use the dictionaries in data-dir, do not search in user and system directories\n"
+    			"  -c, --color                    colorize the output\n"
+    			"  -p, --port                     the port to listen\n"
+    			"\n");
         return EXIT_SUCCESS;
     }
 
     const char *stardict_data_dir = getenv("STARDICT_DATA_DIR");
     std::string data_dir;
-    if (!opt_data_dir) {
+    if (opt_data_dir.length() <= 0) {
         if (!only_data_dir) {
             if (stardict_data_dir)
                 data_dir = stardict_data_dir;
@@ -126,7 +191,7 @@ int main(int argc, char *argv[]) try {
                 data_dir = "/usr/share/stardict/dic";
         }
     } else {
-        data_dir = get_impl(opt_data_dir);
+        data_dir = (opt_data_dir);
     }
 
     const char *homedir = getenv("HOME");
@@ -155,22 +220,22 @@ int main(int argc, char *argv[]) try {
                   });
 
     std::list<std::string> order_list;
-    if (use_dict_list != nullptr) {
+    if (use_dict_list.length() > 0) {
         for (auto &&x : bookname_to_ifo) {
-            char **p = get_impl(use_dict_list);
-            for (; *p != nullptr; ++p)
-                if (x.first.compare(*p) == 0) {
+            const char *p = (use_dict_list.c_str());
+            for (; p != nullptr; ++p)
+                if (x.first.compare(p) == 0) {
                     break;
                 }
-            if (*p == nullptr) {
+            if (p == nullptr) {
                 disable_list.push_back(x.second);
             }
         }
 
         // add bookname to list
-        char **p = get_impl(use_dict_list);
-        while (*p) {
-            order_list.push_back(bookname_to_ifo.at(*p));
+        const char *p = (use_dict_list.c_str());
+        while (p) {
+            order_list.push_back(bookname_to_ifo.at(p));
             ++p;
         }
     } else {
@@ -229,7 +294,7 @@ static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_js
                   disable_list, [use_json, &first_entry](const std::string &filename, bool) -> void {
                       DictInfo dict_info;
                       if (dict_info.load_from_ifo_file(filename, false)) {
-                          const std::string bookname = utf8_to_locale_ign_err(dict_info.bookname);
+                          const std::string &bookname = dict_info.bookname;
                           if (use_json) {
                               if (first_entry) {
                                   first_entry = false;

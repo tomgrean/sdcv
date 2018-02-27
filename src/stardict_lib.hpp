@@ -134,8 +134,9 @@ public:
         *size = idx_file->wordentry_size;
     }
     bool Lookup(const char *str, int64_t &idx);
-
+#if abcdef
     bool LookupWithRule(GPatternSpec *pspec, int64_t *aIndex, int iBuffLen);
+#endif
 
 private:
     std::string ifo_file_name;
@@ -188,11 +189,13 @@ public:
     {
         return oLib[iLib]->Lookup(sWord, iWordIndex);
     }
-    bool LookupSimilarWord(const char *sWord, int64_t &iWordIndex, int iLib);
     bool SimpleLookupWord(const char *sWord, int64_t &iWordIndex, int iLib);
+#if abcdef
+    bool LookupSimilarWord(const char *sWord, int64_t &iWordIndex, int iLib);
 
     bool LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size);
     int LookupWithRule(const char *sWord, char *reslist[]);
+#endif
     bool LookupData(const char *sWord, std::vector<char *> *reslist);
 
 protected:

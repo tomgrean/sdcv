@@ -64,10 +64,11 @@ private:
         bool bufferout_;
         std::string buffer;
     };
-
     void SimpleLookup(const std::string &str, TSearchResultList &res_list);
+#if abcdef
     void LookupWithFuzzy(const std::string &str, TSearchResultList &res_list);
     void LookupWithRule(const std::string &str, TSearchResultList &res_lsit);
+#endif
     void LookupData(const std::string &str, TSearchResultList &res_list);
 };
 

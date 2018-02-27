@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <functional>
 #include <list>
+#include <cstring>
 #include <string>
 
 #ifndef G_DIR_SEPARATOR
@@ -14,6 +15,7 @@
 #endif
 #endif
 
+#if abcdef
 template <typename T, typename unref_res_t, void (*unref_res)(unref_res_t *)>
 class ResourceWrapper
 {
@@ -70,8 +72,7 @@ private:
             unref_res(p_);
     }
 };
-
-extern std::string utf8_to_locale_ign_err(const std::string &utf8_str);
+#endif
 
 extern void for_each_file(const std::list<std::string> &dirs_list, const std::string &suff,
                           const std::list<std::string> &order_list, const std::list<std::string> &disable_list,

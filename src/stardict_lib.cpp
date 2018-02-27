@@ -7,6 +7,7 @@
 #include <cstring>
 #include <stdexcept>
 
+#include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <zlib.h>
@@ -75,14 +76,37 @@ static const char *g_get_user_cache_dir()
 {
 	return ".cache";
 }
+static const char *g_utf8_casefold(const char *p, int len)
+{
+	return p;
+}
+static bool g_file_get_contents(const char *filename, char **buffer)
+{
+	struct stat stt;
+	FILE *f;
+	int res;
+
+	res = stat(filename, &stt);
+	if (res)
+		return false;
+	*buffer = (char*)malloc(stt.st_size);
+	if (*buffer == nullptr)
+		return false;
+	f = fopen(filename, "rb");
+	if (f == nullptr)
+		return false;
+	fread(*buffer, 1, stt.st_size, f);
+	fclose(f);
+	return true;
+}
 }
 
 bool DictInfo::load_from_ifo_file(const std::string &ifofilename,
                                   bool istreedict)
 {
     ifo_file_name = ifofilename;
-    glib::CharStr buffer;
-    if (!g_file_get_contents(ifofilename.c_str(), get_addr(buffer), nullptr, nullptr))
+    char *buffer;
+    if (!g_file_get_contents(ifofilename.c_str(), (&buffer)))
         return false;
 
     static const char TREEDICT_MAGIC_DATA[] = "StarDict's treedict ifo file";
@@ -90,13 +114,17 @@ bool DictInfo::load_from_ifo_file(const std::string &ifofilename,
 
     const char *magic_data = istreedict ? TREEDICT_MAGIC_DATA : DICT_MAGIC_DATA;
     static const unsigned char utf8_bom[] = { 0xEF, 0xBB, 0xBF, '\0' };
-    if (!g_str_has_prefix(
-            g_str_has_prefix(get_impl(buffer), (const char *)(utf8_bom)) ? get_impl(buffer) + 3 : get_impl(buffer),
-            magic_data)) {
+    //if (!g_str_has_prefix(
+    //        g_str_has_prefix((buffer), (const char *)(utf8_bom)) ? (buffer) + 3 : (buffer),
+    //        magic_data)) {
+    const char *checker = buffer;
+    if (!strncmp((const char*)utf8_bom, checker, 3))
+		checker += 3;
+    if (strncmp(magic_data, checker, strlen(magic_data))) {
         return false;
     }
 
-    char *p1 = get_impl(buffer) + strlen(magic_data) - 1;
+    char *p1 = (buffer) + strlen(magic_data) - 1;
 
     char *p2 = strstr(p1, "\nwordcount=");
     if (p2 == nullptr)
@@ -198,13 +226,13 @@ char *DictBase::GetWordData(uint32_t idxitem_offset, uint32_t idxitem_size)
 
     char *data;
     if (!sametypesequence.empty()) {
-        glib::CharStr origin_data((char *)malloc(idxitem_size));
+        char *origin_data((char *)malloc(idxitem_size));
 
         if (dictfile) {
-            const size_t nitems = fread(get_impl(origin_data), idxitem_size, 1, dictfile);
+            const size_t nitems = fread((origin_data), idxitem_size, 1, dictfile);
             THROW_IF_ERROR(nitems == 1);
         } else
-            dictdzfile->read(get_impl(origin_data), idxitem_offset, idxitem_size);
+            dictdzfile->read((origin_data), idxitem_offset, idxitem_size);
 
         uint32_t data_size;
         int sametypesequence_len = sametypesequence.length();
@@ -236,7 +264,7 @@ char *DictBase::GetWordData(uint32_t idxitem_offset, uint32_t idxitem_size)
         data = (char *)malloc(data_size);
         char *p1, *p2;
         p1 = data + sizeof(uint32_t);
-        p2 = get_impl(origin_data);
+        p2 = (origin_data);
         uint32_t sec_size;
         //copy the head items.
         for (int i = 0; i < sametypesequence_len - 1; i++) {
@@ -277,7 +305,7 @@ char *DictBase::GetWordData(uint32_t idxitem_offset, uint32_t idxitem_size)
             }
         }
         //calculate the last item 's size.
-        sec_size = idxitem_size - (p2 - get_impl(origin_data));
+        sec_size = idxitem_size - (p2 - (origin_data));
         *p1 = sametypesequence[sametypesequence_len - 1];
         p1 += sizeof(char);
         switch (sametypesequence[sametypesequence_len - 1]) {
@@ -387,11 +415,13 @@ bool DictBase::SearchData(std::vector<std::string> &SearchWords, uint32_t idxite
         case 'x':
         case 'k':
             sec_size = idxitem_size - (p - origin_data);
-            for (j = 0; j < nWord; j++)
-                if (!WordFind[j] && g_strstr_len(p, sec_size, SearchWords[j].c_str())) {
+            for (j = 0; j < nWord; j++) {
+            	char *t = strstr(p, SearchWords[j].c_str());
+                if (!WordFind[j] && t && t - p < sec_size) {
                     WordFind[j] = true;
                     ++nfound;
                 }
+            }
 
             if (nfound == nWord)
                 return true;
@@ -569,7 +599,7 @@ bool OffsetIndex::load_cache(const std::string &url)
 
     for (const std::string &item : vars) {
         struct ::stat idxstat, cachestat;
-        if (g_stat(url.c_str(), &idxstat) != 0 || g_stat(item.c_str(), &cachestat) != 0)
+        if (stat(url.c_str(), &idxstat) != 0 || stat(item.c_str(), &cachestat) != 0)
             continue;
         if (cachestat.st_mtime < idxstat.st_mtime)
             continue;
@@ -592,18 +622,18 @@ bool OffsetIndex::load_cache(const std::string &url)
 std::list<std::string> OffsetIndex::get_cache_variant(const std::string &url)
 {
     std::list<std::string> res = { url + ".oft" };
-    if (!g_file_test(g_get_user_cache_dir(), G_FILE_TEST_EXISTS) && mkdir(g_get_user_cache_dir(), 0700) == -1)
+    if (access(g_get_user_cache_dir(), R_OK|W_OK|X_OK) && mkdir(g_get_user_cache_dir(), 0700) == -1)
         return res;
 
     const std::string cache_dir = std::string(g_get_user_cache_dir()) + G_DIR_SEPARATOR + "sdwv";
 
-    if (!g_file_test(cache_dir.c_str(), G_FILE_TEST_EXISTS)) {
+    if (access(cache_dir.c_str(), R_OK|W_OK|X_OK)) {
         if (mkdir(cache_dir.c_str(), 0700) == -1)
             return res;
-    } else if (!g_file_test(cache_dir.c_str(), G_FILE_TEST_IS_DIR))
+    } else if (access(cache_dir.c_str(), R_OK|W_OK|X_OK))
         return res;
 
-    char *base = basename(url.c_str());
+    const char *base = basename(url.c_str());
     res.push_back(cache_dir + G_DIR_SEPARATOR + base + ".oft");
     //free(base);
     return res;
@@ -844,8 +874,8 @@ bool SynFile::load(const std::string &url, uint64_t wc)
             // each entry in a syn-file is:
             // - 0-terminated string
             // 4-byte index into .dict file in network byte order
-            glib::CharStr lower_string{ g_utf8_casefold(current, -1) };
-            std::string synonym{ get_impl(lower_string) };
+            const char * lower_string{ g_utf8_casefold(current, -1) };
+            std::string synonym{ (lower_string) };
             current += synonym.length() + 1;
             const uint32_t idx = ntohl(get_uint32(current));
             current += sizeof(idx);
@@ -859,12 +889,14 @@ bool SynFile::load(const std::string &url, uint64_t wc)
 
 bool SynFile::lookup(const char *str, int64_t &idx)
 {
-    glib::CharStr lower_string{ g_utf8_casefold(str, -1) };
-    auto it = synonyms.find(get_impl(lower_string));
+    const char *lower_string{ g_utf8_casefold(str, -1) };
+    auto it = synonyms.find((lower_string));
     if (it != synonyms.end()) {
         idx = it->second;
+        fprintf(stderr, "test for word %s true", str);
         return true;
     }
+    fprintf(stderr, "test for word %s false", str);
     return false;
 }
 
@@ -882,7 +914,7 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
     std::string fullfilename(ifofilename);
     fullfilename.replace(fullfilename.length() - sizeof("ifo") + 1, sizeof("ifo") - 1, "dict.dz");
 
-    if (g_file_test(fullfilename.c_str(), G_FILE_TEST_EXISTS)) {
+    if (!access(fullfilename.c_str(), R_OK)) {
         dictdzfile.reset(new DictData);
         if (!dictdzfile->open(fullfilename, 0)) {
             //g_print("open file %s failed!\n",fullfilename);
@@ -900,7 +932,7 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
     fullfilename = ifofilename;
     fullfilename.replace(fullfilename.length() - sizeof("ifo") + 1, sizeof("ifo") - 1, "idx.gz");
 
-    if (g_file_test(fullfilename.c_str(), G_FILE_TEST_EXISTS)) {
+    if (!access(fullfilename.c_str(), R_OK)) {
         idx_file.reset(new WordListIndex);
     } else {
         fullfilename.erase(fullfilename.length() - sizeof(".gz") + 1, sizeof(".gz") - 1);
@@ -938,7 +970,7 @@ bool Dict::load_ifofile(const std::string &ifofilename, uint64_t &idxfilesize)
 
     return true;
 }
-
+#if abcdef
 bool Dict::LookupWithRule(GPatternSpec *pspec, int64_t *aIndex, int iBuffLen)
 {
     int iIndexCount = 0;
@@ -951,6 +983,7 @@ bool Dict::LookupWithRule(GPatternSpec *pspec, int64_t *aIndex, int iBuffLen)
 
     return iIndexCount > 0;
 }
+#endif
 
 Libs::~Libs()
 {
@@ -1088,7 +1121,7 @@ Libs::poGetPreWord(int64_t *iCurrent)
     }
     return poCurrentWord;
 }
-
+#if abcdef
 bool Libs::LookupSimilarWord(const char *sWord, int64_t &iWordIndex, int iLib)
 {
     int64_t iIndex;
@@ -1405,15 +1438,17 @@ bool Libs::LookupSimilarWord(const char *sWord, int64_t &iWordIndex, int iLib)
 #endif
     return bFound;
 }
-
+#endif
 bool Libs::SimpleLookupWord(const char *sWord, int64_t &iWordIndex, int iLib)
 {
     bool bFound = oLib[iLib]->Lookup(sWord, iWordIndex);
+#if abcdef
     if (!bFound && fuzzy_)
         bFound = LookupSimilarWord(sWord, iWordIndex, iLib);
+#endif
     return bFound;
 }
-
+#if abcdef
 bool Libs::LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size)
 {
     if (sWord[0] == '\0')
@@ -1545,7 +1580,7 @@ int Libs::LookupWithRule(const char *word, char **ppMatchWord)
 
     return iMatchCount;
 }
-
+#endif
 bool Libs::LookupData(const char *sWord, std::vector<char *> *reslist)
 {
     std::vector<std::string> SearchWords;

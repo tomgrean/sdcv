@@ -297,7 +297,7 @@ void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
                               poGetWord(ind, idict),
                               parse_data(dict_name(idict), poGetWordData(ind, idict), colorize_output_)));
 }
-
+#if abcdef
 void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_list)
 {
     static const int MAXFUZZY = 10;
@@ -325,7 +325,7 @@ void Library::LookupWithRule(const std::string &str, TSearchResultList &res_list
         free(match_res[i]);
     }
 }
-
+#endif
 void Library::LookupData(const std::string &str, TSearchResultList &res_list)
 {
     std::vector<std::vector<char *>> drl(ndicts());
@@ -495,6 +495,7 @@ const std::string Library::process_phrase(const char *str, bool buffer_out)
     TSearchResultList res_list;
 
     switch (analyze_query(str, query)) {
+#if abcdef
     case qtFUZZY:
         LookupWithFuzzy(query, res_list);
         break;
@@ -506,6 +507,7 @@ const std::string Library::process_phrase(const char *str, bool buffer_out)
         if (res_list.empty() && fuzzy_)
             LookupWithFuzzy(str, res_list);
         break;
+#endif
     case qtDATA:
         LookupData(query, res_list);
         break;
