@@ -33,10 +33,6 @@
 #include <string>
 #include <vector>
 
-#include <glib.h>
-#include <glib/gi18n.h>
-#include <glib/gstdio.h>
-
 #include "libwrapper.hpp"
 #include "utils.hpp"
 #include "httplib.h"
@@ -45,14 +41,6 @@ static const char gVersion[] = VERSION;
 
 namespace
 {
-static void free_str_array(gchar **arr)
-{
-    gchar **p;
-
-    for (p = arr; *p; ++p)
-        g_free(*p);
-    g_free(arr);
-}
 static bool stdio_getline(FILE *in, std::string &str)
 {
     assert(in != nullptr);
@@ -64,34 +52,19 @@ static bool stdio_getline(FILE *in, std::string &str)
     return EOF != ch;
 }
 }
-namespace glib
-{
-using StrArr = ResourceWrapper<gchar *, gchar *, free_str_array>;
-}
 
 static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json);
 
 int main(int argc, char *argv[]) try {
-    setlocale(LC_ALL, "");
-#if ENABLE_NLS
-    bindtextdomain("sdwv",
-                   //"./locale"//< for testing
-                   GETTEXT_TRANSLATIONS_PATH //< should be
-                   );
-    textdomain("sdwv");
-#endif
-
-    gboolean show_version = FALSE;
-    gboolean show_list_dicts = FALSE;
-    glib::StrArr use_dict_list;
-    gboolean json_output = FALSE;
-    gboolean no_fuzzy = FALSE;
-    gboolean utf8_output = FALSE;
-    gboolean utf8_input = FALSE;
-    glib::CharStr opt_data_dir;
-    gboolean only_data_dir = FALSE;
-    gboolean colorize = FALSE;
-    gint listen_port = -1;
+    bool show_version = false;
+    bool show_list_dicts = false;
+    std::string use_dict_list;
+    bool json_output = false;
+    bool no_fuzzy = false;
+    std::string opt_data_dir;
+    bool only_data_dir = false;
+    bool colorize = false;
+    int listen_port = -1;
 
     const GOptionEntry entries[] = {
         { "version", 'v', 0, G_OPTION_ARG_NONE, &show_version,
@@ -124,26 +97,26 @@ int main(int argc, char *argv[]) try {
 
     glib::Error error;
     GOptionContext *context = g_option_context_new(_(" words"));
-    g_option_context_set_help_enabled(context, TRUE);
+    g_option_context_set_help_enabled(context, true);
     g_option_context_add_main_entries(context, entries, nullptr);
-    const gboolean parse_res = g_option_context_parse(context, &argc, &argv, get_addr(error));
+    const bool parse_res = g_option_context_parse(context, &argc, &argv, get_addr(error));
     g_option_context_free(context);
     if (!parse_res) {
-        fprintf(stderr, _("Invalid command line arguments: %s\n"),
+        fprintf(stderr, "Invalid command line arguments: %s\n",
                 error->message);
         return EXIT_FAILURE;
     }
     if (listen_port > 0 && !colorize) {
-    	fprintf(stderr, _("-p implies -c.\n"));
-    	colorize = TRUE;
+    	fprintf(stderr, "-p implies -c.\n");
+    	colorize = true;
     }
 
     if (show_version) {
-        printf(_("Web version of Stardict, version %s\n"), gVersion);
+        printf("Web version of Stardict, version %s\n", gVersion);
         return EXIT_SUCCESS;
     }
 
-    const gchar *stardict_data_dir = g_getenv("STARDICT_DATA_DIR");
+    const char *stardict_data_dir = getenv("STARDICT_DATA_DIR");
     std::string data_dir;
     if (!opt_data_dir) {
         if (!only_data_dir) {
@@ -156,9 +129,9 @@ int main(int argc, char *argv[]) try {
         data_dir = get_impl(opt_data_dir);
     }
 
-    const char *homedir = g_getenv("HOME");
-    if (!homedir)
-        homedir = g_get_home_dir();
+    const char *homedir = getenv("HOME");
+//    if (!homedir)
+//        homedir = g_get_home_dir();
 
     std::list<std::string> dicts_dir_list;
     if (!only_data_dir)
@@ -184,7 +157,7 @@ int main(int argc, char *argv[]) try {
     std::list<std::string> order_list;
     if (use_dict_list != nullptr) {
         for (auto &&x : bookname_to_ifo) {
-            gchar **p = get_impl(use_dict_list);
+            char **p = get_impl(use_dict_list);
             for (; *p != nullptr; ++p)
                 if (x.first.compare(*p) == 0) {
                     break;
@@ -195,13 +168,13 @@ int main(int argc, char *argv[]) try {
         }
 
         // add bookname to list
-        gchar **p = get_impl(use_dict_list);
+        char **p = get_impl(use_dict_list);
         while (*p) {
             order_list.push_back(bookname_to_ifo.at(*p));
             ++p;
         }
     } else {
-        const std::string odering_cfg_file = std::string(homedir) + G_DIR_SEPARATOR_S ".sdwv_ordering";
+        const std::string odering_cfg_file = std::string(homedir) + G_DIR_SEPARATOR ".sdwv_ordering";
         FILE *ordering_file = fopen(odering_cfg_file.c_str(), "r");
         if (ordering_file != nullptr) {
             std::string line;
@@ -212,13 +185,13 @@ int main(int argc, char *argv[]) try {
         }
     }
 
-    const std::string conf_dir = std::string(g_get_home_dir()) + G_DIR_SEPARATOR + ".stardict";
-    if (g_mkdir(conf_dir.c_str(), S_IRWXU) == -1 && errno != EEXIST) {
-        fprintf(stderr, _("g_mkdir failed: %s\n"), strerror(errno));
+    const std::string conf_dir = std::string(homedir) + G_DIR_SEPARATOR + ".stardict";
+    if (mkdir(conf_dir.c_str(), S_IRWXU) == -1 && errno != EEXIST) {
+        fprintf(stderr, "g_mkdir failed: %s\n", strerror(errno));
     }
 
     Library::pbookname_to_ifo = &bookname_to_ifo;
-    Library lib(utf8_input, utf8_output, colorize, json_output, no_fuzzy);
+    Library lib(colorize, json_output, no_fuzzy);
     lib.load(dicts_dir_list, order_list, disable_list);
 
     if (optind < argc) {
@@ -236,7 +209,7 @@ int main(int argc, char *argv[]) try {
         //serv.get("/.*/res/.*", Ser);
         serv.listen("127.0.0.1", (int)listen_port);
     } else {
-        fprintf(stderr, _("There is no word.\n"));
+        fprintf(stderr, "There is no word.\n");
     }
     return EXIT_SUCCESS;
 } catch (const std::exception &ex) {
@@ -248,7 +221,7 @@ static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_js
 {
     bool first_entry = true;
     if (!use_json)
-        printf(_("Dictionary's name   Word count\n"));
+        printf("Dictionary's name   Word count\n");
     else
         fputc('[', stdout);
     std::list<std::string> order_list, disable_list;

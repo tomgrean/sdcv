@@ -61,8 +61,8 @@ static inline int minimum(const int a, const int b, const int c)
         min = c;
     return min;
 }
-
-int EditDistance::CalEditDistance(const gunichar *s, const gunichar *t, const int limit)
+template <typename TC=uint32_t>
+int EditDistance::CalEditDistance(const TC *s, const TC *t, const int limit)
 /*Compute levenshtein distance between s and t, this is using QUICK algorithm*/
 {
     int n = 0, m = 0, iLenDif, k, i, j, cost;
@@ -87,7 +87,7 @@ int EditDistance::CalEditDistance(const gunichar *s, const gunichar *t, const in
     if (m == 0 || n == 0 || d == nullptr)
         return (m + n);
     if (m < n) {
-        const gunichar *temp = s;
+        const TC *temp = s;
         int itemp = n;
         s = t;
         t = temp;

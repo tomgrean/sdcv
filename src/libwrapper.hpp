@@ -36,10 +36,8 @@ class Library : public Libs
 {
 public:
     static std::map<std::string, std::string> *pbookname_to_ifo;
-    Library(bool uinput, bool uoutput, bool colorize_output, bool use_json, bool no_fuzzy)
-        : utf8_input_(uinput)
-        , utf8_output_(uoutput)
-        , colorize_output_(colorize_output)
+    Library(bool colorize_output, bool use_json, bool no_fuzzy)
+        : colorize_output_(colorize_output)
         , json_(use_json)
     {
         setVerbose(!use_json);
@@ -49,8 +47,6 @@ public:
     const std::string process_phrase(const char *loc_str, bool buffer_out);
 
 private:
-    const bool utf8_input_;
-    const bool utf8_output_;
     const bool colorize_output_;
     const bool json_;
     class response_out final

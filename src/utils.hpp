@@ -3,9 +3,16 @@
 #include <cassert>
 #include <cstddef>
 #include <functional>
-#include <glib.h>
 #include <list>
 #include <string>
+
+#ifndef G_DIR_SEPARATOR
+#ifdef _WIN32
+#define G_DIR_SEPARATOR "\\"
+#else
+#define G_DIR_SEPARATOR "/"
+#endif
+#endif
 
 template <typename T, typename unref_res_t, void (*unref_res)(unref_res_t *)>
 class ResourceWrapper
@@ -63,12 +70,6 @@ private:
             unref_res(p_);
     }
 };
-
-namespace glib
-{
-typedef ResourceWrapper<gchar, void, g_free> CharStr;
-typedef ResourceWrapper<GError, GError, g_error_free> Error;
-}
 
 extern std::string utf8_to_locale_ign_err(const std::string &utf8_str);
 

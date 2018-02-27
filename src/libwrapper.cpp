@@ -26,8 +26,6 @@
 #include <map>
 #include <memory>
 
-#include <glib/gi18n.h>
-
 #include "utils.hpp"
 
 #include "libwrapper.hpp"
@@ -50,7 +48,7 @@ static const char *ABR_VISFMT = ESC_GREEN;
 
 std::map<std::string, std::string> *Library::pbookname_to_ifo = nullptr;
 
-static std::string text2simplehtml(const char *str, guint32 &sec_size)
+static std::string text2simplehtml(const char *str, uint32_t &sec_size)
 {
     std::string res;
     const char *p = str;
@@ -74,7 +72,7 @@ static std::string text2simplehtml(const char *str, guint32 &sec_size)
     return res;
 }
 
-static std::string xdxf2text(const std::string &dictname, const char *xstr, bool colorize_output, guint32 &sec_size)
+static std::string xdxf2text(const std::string &dictname, const char *xstr, bool colorize_output, uint32_t &sec_size)
 {
     std::string res;
     const char *p = xstr;
@@ -210,17 +208,17 @@ static std::string xdxf2text(const std::string &dictname, const char *xstr, bool
     return res;
 }
 
-static std::string parse_data(const std::string &dictname, const gchar *data, bool colorize_output)
+static std::string parse_data(const std::string &dictname, const char *data, bool colorize_output)
 {
     if (!data)
         return "";
 
     std::string res;
-    guint32 data_size, sec_size;
-    const gchar *p = data;
+    uint32_t data_size, sec_size;
+    const char *p = data;
     data_size = get_uint32(p);
-    p += sizeof(guint32);
-    while (guint32(p - data) < data_size) {
+    p += sizeof(uint32_t);
+    while (uint32_t(p - data) < data_size) {
         sec_size = 0;
         switch (*p++) {
         case 'h': // HTML data
@@ -279,7 +277,7 @@ static std::string parse_data(const std::string &dictname, const gchar *data, bo
         case 'W': // wav file
         case 'P': // picture data
             sec_size = get_uint32(p);
-            sec_size += sizeof(guint32);
+            sec_size += sizeof(uint32_t);
             break;
         }
         p += sec_size;
@@ -290,9 +288,9 @@ static std::string parse_data(const std::string &dictname, const gchar *data, bo
 
 void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
 {
-    glong ind;
+    int64_t ind;
     res_list.reserve(ndicts());
-    for (gint idict = 0; idict < ndicts(); ++idict)
+    for (int idict = 0; idict < ndicts(); ++idict)
         if (SimpleLookupWord(str.c_str(), ind, idict))
             res_list.push_back(
                 TSearchResult(dict_name(idict),
@@ -304,39 +302,39 @@ void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_lis
 {
     static const int MAXFUZZY = 10;
 
-    gchar *fuzzy_res[MAXFUZZY];
+    char *fuzzy_res[MAXFUZZY];
     if (!Libs::LookupWithFuzzy(str.c_str(), fuzzy_res, MAXFUZZY))
         return;
 
-    for (gchar **p = fuzzy_res, **end = (fuzzy_res + MAXFUZZY); p != end && *p; ++p) {
+    for (char **p = fuzzy_res, **end = (fuzzy_res + MAXFUZZY); p != end && *p; ++p) {
         SimpleLookup(*p, res_list);
-        g_free(*p);
+        free(*p);
     }
 }
 
 void Library::LookupWithRule(const std::string &str, TSearchResultList &res_list)
 {
-    std::vector<gchar *> match_res((MAX_MATCH_ITEM_PER_LIB)*ndicts());
+    std::vector<char *> match_res((MAX_MATCH_ITEM_PER_LIB)*ndicts());
 
-    const gint nfound = Libs::LookupWithRule(str.c_str(), &match_res[0]);
+    const int nfound = Libs::LookupWithRule(str.c_str(), &match_res[0]);
     if (nfound == 0)
         return;
 
-    for (gint i = 0; i < nfound; ++i) {
+    for (int i = 0; i < nfound; ++i) {
         SimpleLookup(match_res[i], res_list);
-        g_free(match_res[i]);
+        free(match_res[i]);
     }
 }
 
 void Library::LookupData(const std::string &str, TSearchResultList &res_list)
 {
-    std::vector<std::vector<gchar *>> drl(ndicts());
+    std::vector<std::vector<char *>> drl(ndicts());
     if (!Libs::LookupData(str.c_str(), &drl[0]))
         return;
     for (int idict = 0; idict < ndicts(); ++idict)
-        for (gchar *res : drl[idict]) {
+        for (char *res : drl[idict]) {
             SimpleLookup(res, res_list);
-            g_free(res);
+            free(res);
         }
 }
 
@@ -429,11 +427,6 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
     if (!lib_->json_ && lib_->colorize_output_)
         out << "<ol>";
     for (TSearchResult &res : res_list) {
-        if (lib_->utf8_output_) {
-            res.bookname = utf8_to_locale_ign_err(res.bookname);
-            res.def = utf8_to_locale_ign_err(res.def);
-            res.exp = utf8_to_locale_ign_err(res.exp);
-        }
         if (!lib_->json_ && lib_->colorize_output_) {
             // put list-of-contents
             out << "<li><a href='#" << res.idname << "'>"
@@ -471,37 +464,37 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
     }
 }
 
-const std::string Library::process_phrase(const char *loc_str, bool buffer_out)
+const std::string Library::process_phrase(const char *str, bool buffer_out)
 {
-    response_out outputer(loc_str, this, buffer_out);
-    if (nullptr == loc_str)
+    response_out outputer(str, this, buffer_out);
+    if (nullptr == str)
         return outputer.get_content();
 
     std::string query;
 
-    analyze_query(loc_str, query);
+    analyze_query(str, query);
 
-    gsize bytes_read;
-    gsize bytes_written;
-    glib::Error err;
-    glib::CharStr str;
-    if (!utf8_input_)
-        str.reset(g_locale_to_utf8(loc_str, -1, &bytes_read, &bytes_written, get_addr(err)));
-    else
-        str.reset(g_strdup(loc_str));
-
-    if (nullptr == get_impl(str)) {
-        fprintf(stderr, _("Can not convert %s to utf8.\n"), loc_str);
-        fprintf(stderr, "%s\n", err->message);
-        return std::string();
-    }
+//    size_t bytes_read;
+//    size_t bytes_written;
+//    glib::Error err;
+//    glib::CharStr str;
+//    if (!utf8_input_)
+//        str.reset(g_locale_to_utf8(loc_str, -1, &bytes_read, &bytes_written, get_addr(err)));
+//    else
+//        str.reset(g_strdup(loc_str));
+//
+//    if (nullptr == get_impl(str)) {
+//        fprintf(stderr, _("Can not convert %s to utf8.\n"), loc_str);
+//        fprintf(stderr, "%s\n", err->message);
+//        return std::string();
+//    }
 
     if (str[0] == '\0')
         return outputer.get_content();
 
     TSearchResultList res_list;
 
-    switch (analyze_query(get_impl(str), query)) {
+    switch (analyze_query(str, query)) {
     case qtFUZZY:
         LookupWithFuzzy(query, res_list);
         break;
@@ -509,9 +502,9 @@ const std::string Library::process_phrase(const char *loc_str, bool buffer_out)
         LookupWithRule(query, res_list);
         break;
     case qtSIMPLE:
-        SimpleLookup(get_impl(str), res_list);
+        SimpleLookup(str, res_list);
         if (res_list.empty() && fuzzy_)
-            LookupWithFuzzy(get_impl(str), res_list);
+            LookupWithFuzzy(str, res_list);
         break;
     case qtDATA:
         LookupData(query, res_list);
@@ -523,11 +516,8 @@ const std::string Library::process_phrase(const char *loc_str, bool buffer_out)
     if (!res_list.empty()) {
         outputer.print_search_result(res_list);
     } else {
-        std::string loc_str;
-        if (!utf8_output_)
-            loc_str = utf8_to_locale_ign_err(get_impl(str));
         if (!json_) {
-            outputer << ("Nothing similar to ") << (loc_str);
+            outputer << ("Nothing similar to ") << (str);
         }
     }
 

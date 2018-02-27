@@ -12,7 +12,6 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
-#include <glib.h>
 
 class MapFile
 {
@@ -22,7 +21,7 @@ public:
     MapFile(const MapFile &) = delete;
     MapFile &operator=(const MapFile &) = delete;
     bool open(const char *file_name, unsigned long file_size);
-    gchar *begin() { return data; }
+    char *begin() { return data; }
 
 private:
     char *data = nullptr;
@@ -43,7 +42,7 @@ inline bool MapFile::open(const char *file_name, unsigned long file_size)
         //g_print("Open file %s failed!\n",fullfilename);
         return false;
     }
-    data = (gchar *)mmap(nullptr, file_size, PROT_READ, MAP_SHARED, mmap_fd, 0);
+    data = (char *)mmap(nullptr, file_size, PROT_READ, MAP_SHARED, mmap_fd, 0);
     if ((void *)data == (void *)(-1)) {
         //g_print("mmap file %s failed!\n",idxfilename);
         data = nullptr;
@@ -54,9 +53,9 @@ inline bool MapFile::open(const char *file_name, unsigned long file_size)
                        FILE_ATTRIBUTE_NORMAL, 0);
     hFileMap = CreateFileMapping(hFile, nullptr, PAGE_READONLY, 0,
                                  file_size, nullptr);
-    data = (gchar *)MapViewOfFile(hFileMap, FILE_MAP_READ, 0, 0, file_size);
+    data = (char *)MapViewOfFile(hFileMap, FILE_MAP_READ, 0, 0, file_size);
 #else
-    gsize read_len;
+    size_t read_len;
     if (!g_file_get_contents(file_name, &data, &read_len, nullptr))
         return false;
 
@@ -80,7 +79,7 @@ inline MapFile::~MapFile()
     CloseHandle(hFileMap);
     CloseHandle(hFile);
 #else
-    g_free(data);
+    free(data);
 #endif
 #endif
 }

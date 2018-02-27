@@ -25,49 +25,25 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
-#include <glib.h>
-#include <glib/gi18n.h>
 #include <iomanip>
 #include <sstream>
+#include <dirent.h>
 
 #include "utils.hpp"
-
-std::string utf8_to_locale_ign_err(const std::string &utf8_str)
-{
-    std::string res;
-
-    const char *charset;
-    if (g_get_charset(&charset))
-        res = utf8_str;
-    else {
-        gsize bytes_read, bytes_written;
-        glib::Error err;
-        glib::CharStr tmp(g_convert_with_fallback(utf8_str.c_str(), -1, charset, "UTF-8", nullptr,
-                                                  &bytes_read, &bytes_written, get_addr(err)));
-        if (nullptr == get_impl(tmp)) {
-            fprintf(stderr, _("Can not convert %s to current locale.\n"), utf8_str.c_str());
-            fprintf(stderr, "%s\n", err->message);
-            exit(EXIT_FAILURE);
-        }
-        res = get_impl(tmp);
-    }
-
-    return res;
-}
 
 static void __for_each_file(const std::string &dirname, const std::string &suff,
                             const std::list<std::string> &order_list, const std::list<std::string> &disable_list,
                             const std::function<void(const std::string &, bool)> &f)
 {
-    GDir *dir = g_dir_open(dirname.c_str(), 0, nullptr);
+    DIR *dir = opendir(dirname.c_str());
     if (dir) {
-        const gchar *filename;
+    	const struct dirent *entry;
 
-        while ((filename = g_dir_read_name(dir)) != nullptr) {
-            const std::string fullfilename(dirname + G_DIR_SEPARATOR_S + filename);
-            if (g_file_test(fullfilename.c_str(), G_FILE_TEST_IS_DIR))
+        while ((entry = readdir(dir)) != nullptr) {
+            const std::string fullfilename(dirname + G_DIR_SEPARATOR + entry->d_name);
+            if (entry->d_type == DT_DIR)
                 __for_each_file(fullfilename, suff, order_list, disable_list, f);
-            else if (g_str_has_suffix(filename, suff.c_str()) && std::find(order_list.begin(), order_list.end(), fullfilename) == order_list.end()) {
+            else if (strstr(entry->d_name, suff.c_str()) && std::find(order_list.begin(), order_list.end(), fullfilename) == order_list.end()) {
                 const bool disable = std::find(disable_list.begin(),
                                                disable_list.end(),
                                                fullfilename)
@@ -75,7 +51,7 @@ static void __for_each_file(const std::string &dirname, const std::string &suff,
                 f(fullfilename, disable);
             }
         }
-        g_dir_close(dir);
+        closedir(dir);
     }
 }
 

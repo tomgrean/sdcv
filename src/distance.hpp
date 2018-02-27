@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdlib>
-#include <glib.h>
+#include <cstdint>
 
 class EditDistance
 {
@@ -18,7 +18,8 @@ public:
     }
     EditDistance(const EditDistance &) = delete;
     EditDistance &operator=(const EditDistance &) = delete;
-    int CalEditDistance(const gunichar *s, const gunichar *t, const int limit);
+    template <typename TC=uint32_t>
+    int CalEditDistance(const TC *s, const TC *t, const int limit);
 
 private:
     int *d;
