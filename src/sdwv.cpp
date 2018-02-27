@@ -134,8 +134,8 @@ int main(int argc, char *argv[]) try {
         return EXIT_FAILURE;
     }
     if (listen_port > 0 && !colorize) {
-    	fprintf(stderr, _("-p implies -c.\n"));
-    	colorize = TRUE;
+        fprintf(stderr, _("-p implies -c.\n"));
+        colorize = TRUE;
     }
 
     if (show_version) {

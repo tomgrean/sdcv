@@ -56,6 +56,15 @@ static std::string text2simplehtml(const char *str, guint32 &sec_size)
     const char *p = str;
     for (; *p; ++p) {
         switch (*p) {
+        case ' ':
+            if (p[1] == ' ')
+                res += "&nbsp;";
+            else
+                res += ' ';
+            break;
+        case '\t':
+            res += "&nbsp;&nbsp;&nbsp;&nbsp;";
+            break;
         case '\n':
             res += "<br>\n";
             break;
