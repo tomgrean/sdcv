@@ -97,8 +97,8 @@ add_definitions(-DVERSION="${sdwv_VERSION}" -DHAVE_CONFIG_H)
 
 add_executable(sdwv ${sdwv_SRCS})
 
+#  ${GLIB2_LIBRARIES}
 target_link_libraries(sdwv
-  ${GLIB2_LIBRARIES}
   ${ZLIB_LIBRARIES}
 )
 if (ENABLE_NLS)

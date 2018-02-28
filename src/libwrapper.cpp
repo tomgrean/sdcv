@@ -22,6 +22,7 @@
 #include "config.h"
 #endif
 
+#include <cstdio>
 #include <cstring>
 #include <map>
 #include <memory>
@@ -297,7 +298,7 @@ void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
                               poGetWord(ind, idict),
                               parse_data(dict_name(idict), poGetWordData(ind, idict), colorize_output_)));
 }
-#if abcdef
+
 void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_list)
 {
     static const int MAXFUZZY = 10;
@@ -311,7 +312,6 @@ void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_lis
         free(*p);
     }
 }
-
 void Library::LookupWithRule(const std::string &str, TSearchResultList &res_list)
 {
     std::vector<char *> match_res((MAX_MATCH_ITEM_PER_LIB)*ndicts());
@@ -325,7 +325,6 @@ void Library::LookupWithRule(const std::string &str, TSearchResultList &res_list
         free(match_res[i]);
     }
 }
-#endif
 void Library::LookupData(const std::string &str, TSearchResultList &res_list)
 {
     std::vector<std::vector<char *>> drl(ndicts());
@@ -467,12 +466,12 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
 const std::string Library::process_phrase(const char *str, bool buffer_out)
 {
     response_out outputer(str, this, buffer_out);
-    if (nullptr == str)
+    if (nullptr == str || '\0' == str[0])
         return outputer.get_content();
 
     std::string query;
 
-    analyze_query(str, query);
+    //analyze_query(str, query);
 
 //    size_t bytes_read;
 //    size_t bytes_written;
@@ -489,13 +488,9 @@ const std::string Library::process_phrase(const char *str, bool buffer_out)
 //        return std::string();
 //    }
 
-    if (str[0] == '\0')
-        return outputer.get_content();
-
     TSearchResultList res_list;
 
     switch (analyze_query(str, query)) {
-#if abcdef
     case qtFUZZY:
         LookupWithFuzzy(query, res_list);
         break;
@@ -507,7 +502,6 @@ const std::string Library::process_phrase(const char *str, bool buffer_out)
         if (res_list.empty() && fuzzy_)
             LookupWithFuzzy(str, res_list);
         break;
-#endif
     case qtDATA:
         LookupData(query, res_list);
         break;

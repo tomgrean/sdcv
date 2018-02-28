@@ -1,5 +1,6 @@
 #pragma once
 
+#if abcdef
 #include <cstdlib>
 #include <cstdint>
 
@@ -25,3 +26,5 @@ private:
     int *d;
     int currentelements;
 };
+
+#endif

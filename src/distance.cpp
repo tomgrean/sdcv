@@ -33,6 +33,7 @@ The Levenshtein distance algorithm has been used in:
     * Plagiarism detection 
 */
 
+#if abcdef
 #include <cstdlib>
 #include <cstring>
 
@@ -143,3 +144,4 @@ int EditDistance::CalEditDistance(const TC *s, const TC *t, const int limit)
     // d(n-1,m-1)
     return d[n * m - 1];
 }
+#endif

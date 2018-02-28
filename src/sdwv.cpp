@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) try {
                 {0, 0, 0, 0 }
             };
 
-            c = getopt_long(argc, argv, "hvlu:je2:xcp",
+            c = getopt_long(argc, argv, "hvlu:je2:xcp:",
                      long_options, &option_index);
             if (c == -1)
                 break;
@@ -132,8 +132,10 @@ int main(int argc, char *argv[]) try {
             	arg = 1;
             	if (optarg)
             		listen_port = (int)strtol(optarg, NULL, 10);
-            	else
+            	else {
+            		fprintf(stderr, "no port, use default 8888\n");
             		listen_port = 8888;
+            	}
             	break;
             case '?':
                 break;
@@ -188,7 +190,7 @@ int main(int argc, char *argv[]) try {
             if (stardict_data_dir)
                 data_dir = stardict_data_dir;
             else
-                data_dir = "/usr/share/stardict/dic";
+                data_dir = "/storage/sdcard1/download/dict";
         }
     } else {
         data_dir = (opt_data_dir);
@@ -272,7 +274,7 @@ int main(int argc, char *argv[]) try {
             res.set_content(result, "text/html");
         });
         //serv.get("/.*/res/.*", Ser);
-        serv.listen("127.0.0.1", (int)listen_port);
+        serv.listen("0.0.0.0", (int)listen_port);
     } else {
         fprintf(stderr, "There is no word.\n");
     }

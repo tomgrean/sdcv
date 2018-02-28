@@ -76,6 +76,16 @@ typedef int socket_t;
 
 namespace httplib
 {
+static std::string httplib_to_string(int v)
+{
+	char buf[12];
+	snprintf(buf, sizeof(buf), "%d", v);
+	return std::string(buf);
+}
+static inline int httplib_stoi(std::string str, int begin = 0, int base = 10)
+{
+	return (int)strtol(str.c_str() + begin, nullptr, base);
+}
 
 namespace detail {
 
@@ -89,7 +99,6 @@ struct ci {
             });
     }
 };
-
 } // namespace detail
 
 enum class HttpVersion { v1_0 = 0, v1_1 };
@@ -512,7 +521,7 @@ socket_t create_socket(const char* host, int port, Fn fn, int socket_flags = 0)
     hints.ai_flags = socket_flags;
     hints.ai_protocol = 0;
 
-    auto service = std::to_string(port);
+    auto service = httplib_to_string(port);
 
     if (getaddrinfo(host, service.c_str(), &hints, &result)) {
         return -1;
@@ -690,7 +699,7 @@ inline int get_header_value_int(const Headers& headers, const char* key, int def
 {
     auto it = headers.find(key);
     if (it != headers.end()) {
-        return std::stoi(it->second);
+        return httplib_stoi(it->second);
     }
     return def;
 }
@@ -772,7 +781,7 @@ bool read_content_chunked(Stream& strm, T& x)
         return false;
     }
 
-    auto chunk_len = std::stoi(reader.ptr(), 0, 16);
+    auto chunk_len = httplib_stoi(reader.ptr(), 0, 16);
 
     while (chunk_len > 0){
         std::string chunk(chunk_len, 0);
@@ -796,7 +805,7 @@ bool read_content_chunked(Stream& strm, T& x)
             return false;
         }
 
-        chunk_len = std::stoi(reader.ptr(), 0, 16);
+        chunk_len = httplib_stoi(reader.ptr(), 0, 16);
     }
 
     return true;
@@ -1093,7 +1102,7 @@ inline void make_range_header_core(std::string& field, uint64_t value)
     if (!field.empty()) {
         field += ", ";
     }
-    field += std::to_string(value) + "-";
+    field += httplib_to_string(value) + "-";
 }
 
 template<typename uint64_t, typename... Args>
@@ -1102,7 +1111,7 @@ inline void make_range_header_core(std::string& field, uint64_t value1, uint64_t
     if (!field.empty()) {
         field += ", ";
     }
-    field += std::to_string(value1) + "-" + std::to_string(value2);
+    field += httplib_to_string(value1) + "-" + httplib_to_string(value2);
     make_range_header_core(field, args...);
 }
 
@@ -1472,7 +1481,7 @@ inline void Server::write_response(Stream& strm, bool last_connection, const Req
             res.set_header("Content-Type", "text/plain");
         }
 
-        auto length = std::to_string(res.body.size());
+        auto length = httplib_to_string(res.body.size());
         res.set_header("Content-Length", length.c_str());
     }
 
@@ -1642,7 +1651,7 @@ inline Client::Client(
     , port_(port)
     , timeout_sec_(timeout_sec)
     , http_version_(http_version)
-    , host_and_port_(host_ + ":" + std::to_string(port_))
+    , host_and_port_(host_ + ":" + httplib_to_string(port_))
 {
 }
 
@@ -1687,7 +1696,7 @@ inline bool Client::read_response_line(Stream& strm, Response& res)
 
     std::cmatch m;
     if (std::regex_match(reader.ptr(), m, re)) {
-        res.status = std::stoi(std::string(m[1]));
+        res.status = httplib_stoi(std::string(m[1]));
     }
 
     return true;
@@ -1739,7 +1748,7 @@ inline void Client::write_request(Stream& strm, Request& req)
             req.set_header("Content-Type", "text/plain");
         }
 
-        auto length = std::to_string(req.body.size());
+        auto length = httplib_to_string(req.body.size());
         req.set_header("Content-Length", length.c_str());
     }
 

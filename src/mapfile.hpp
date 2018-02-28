@@ -5,6 +5,7 @@
 #endif
 
 #ifdef HAVE_MMAP
+#include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/types.h>
