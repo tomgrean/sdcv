@@ -196,8 +196,8 @@ int main(int argc, char *argv[]) try {
             if (stardict_data_dir) {
                 data_dir = stardict_data_dir;
             } else {
-                //data_dir = "/storage/sdcard1/download/dict";
-            	data_dir = "/usr/share/stardict/dict";
+                data_dir = "/storage/sdcard1/download/dict";
+            	//data_dir = "/usr/share/stardict/dict";
             }
         }
     } else {
