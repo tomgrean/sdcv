@@ -77,7 +77,7 @@ static const char *g_get_user_cache_dir()
 {
 	return ".cache";
 }
-static const char *g_utf8_casefold(const char *p)
+inline static const char *g_utf8_casefold(const char *p)
 {
 	return p;
 }
@@ -102,7 +102,7 @@ static bool g_file_get_contents(const char *filename, char **buffer)
 	fclose(f);
 	return true;
 }
-static char *g_utf8_strdown(const char *p)
+inline static char *g_utf8_strdown(const char *p)
 {
 	if (!p)
 		return nullptr;
@@ -117,7 +117,7 @@ static char *g_utf8_strdown(const char *p)
 	}
 	return result;
 }
-static char *g_utf8_strup(const char *p)
+inline static char *g_utf8_strup(const char *p)
 {
 	if (!p)
 		return nullptr;
@@ -131,7 +131,7 @@ static char *g_utf8_strup(const char *p)
 	}
 	return result;
 }
-static char *g_utf8_camelcase(const char *p)
+inline static char *g_utf8_camelcase(const char *p)
 {
 	if (!p)
 		return nullptr;
@@ -140,13 +140,15 @@ static char *g_utf8_camelcase(const char *p)
 	bool firstChar = true;
 
 	for (char *x = result; *x; ++x) {
-		if (firstChar) {
-			firstChar = false;
-			*x = toupper(*x);
-		} else if (isspace(*x)) {
-			firstChar = true;
+		if (isalpha(*x)) {
+			if (firstChar) {
+				firstChar = false;
+				*x = toupper(*x);
+			} else {
+				*x = tolower(*x);
+			}
 		} else {
-			*x = tolower(*x);
+			firstChar = true;
 		}
 	}
 	return result;
