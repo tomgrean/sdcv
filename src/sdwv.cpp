@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) try {
     std::string opt_data_dir;
     bool only_data_dir = false;
     bool colorize = false;
+    bool daemonize = false;
     int listen_port = -1;
 
     if (argc > 1) {
@@ -84,10 +85,11 @@ int main(int argc, char *argv[]) try {
                 {"only-data-dir", no_argument,       0,  'x' },
                 {"color",         no_argument,       0,  'c' },
                 {"port",          required_argument, 0,  'p' },
+                {"daemon",        no_argument,       0,  'd' },
                 {0, 0, 0, 0 }
             };
 
-            c = getopt_long(argc, argv, "hvlu:je2:xcp:",
+            c = getopt_long(argc, argv, "hvlu:je2:xcp:d",
                      long_options, &option_index);
             if (c == -1)
                 break;
@@ -107,7 +109,7 @@ int main(int argc, char *argv[]) try {
             	if (optarg)
             		use_dict_list = optarg;
             	else
-            		fprintf(stderr, "Omitting arg to '-%c'.\n", c);
+            		printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'j':
                 json_output = true;
@@ -120,7 +122,7 @@ int main(int argc, char *argv[]) try {
             	if (optarg)
             		opt_data_dir = optarg;
             	else
-            		fprintf(stderr, "Omitting arg to '-%c'.\n", c);
+            		printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'x':
             	only_data_dir = true;
@@ -133,9 +135,12 @@ int main(int argc, char *argv[]) try {
             	if (optarg)
             		listen_port = (int)strtol(optarg, NULL, 10);
             	else {
-            		fprintf(stderr, "no port, use default 8888\n");
+            		printf("no port, use default 8888\n");
             		listen_port = 8888;
             	}
+            	break;
+            case 'd':
+            	daemonize = true;
             	break;
             case '?':
                 break;
@@ -150,7 +155,7 @@ int main(int argc, char *argv[]) try {
         }
 
 		if (listen_port > 0 && !colorize) {
-			fprintf(stderr, "-p implies -c.\n");
+			printf("-p implies -c.\n");
 			colorize = true;
 		}
     } else {
@@ -179,6 +184,7 @@ int main(int argc, char *argv[]) try {
     			"  -x, --only-data-dir            only use the dictionaries in data-dir, do not search in user and system directories\n"
     			"  -c, --color                    colorize the output\n"
     			"  -p, --port                     the port to listen\n"
+    			"  -d, --daemon                   run in daemon mode.\n"
     			"\n");
         return EXIT_SUCCESS;
     }
@@ -187,15 +193,28 @@ int main(int argc, char *argv[]) try {
     std::string data_dir;
     if (opt_data_dir.length() <= 0) {
         if (!only_data_dir) {
-            if (stardict_data_dir)
+            if (stardict_data_dir) {
                 data_dir = stardict_data_dir;
-            else
-                data_dir = "/storage/sdcard1/download/dict";
+            } else {
+                //data_dir = "/storage/sdcard1/download/dict";
+            	data_dir = "/usr/share/stardict/dict";
+            }
         }
     } else {
         data_dir = (opt_data_dir);
     }
 
+    if (daemonize) {
+    	show_v1_h2 = open("/dev/null", O_RDWR);
+    	dup2(show_v1_h2, 0);
+    	dup2(show_v1_h2, 1);
+    	dup2(show_v1_h2, 2);
+    	close(show_v1_h2);
+    	show_v1_h2 = fork();
+    	if (show_v1_h2) {
+    		return EXIT_SUCCESS;
+    	}
+    }
     const char *homedir = getenv("HOME");
 //    if (!homedir)
 //        homedir = g_get_home_dir();
@@ -254,7 +273,7 @@ int main(int argc, char *argv[]) try {
 
     const std::string conf_dir = std::string(homedir) + G_DIR_SEPARATOR + ".stardict";
     if (mkdir(conf_dir.c_str(), S_IRWXU) == -1 && errno != EEXIST) {
-        fprintf(stderr, "g_mkdir failed: %s\n", strerror(errno));
+        printf("g_mkdir failed: %s\n", strerror(errno));
     }
 
     Library::pbookname_to_ifo = &bookname_to_ifo;
@@ -276,11 +295,11 @@ int main(int argc, char *argv[]) try {
         //serv.get("/.*/res/.*", Ser);
         serv.listen("0.0.0.0", (int)listen_port);
     } else {
-        fprintf(stderr, "There is no word.\n");
+        printf("There is no word.\n");
     }
     return EXIT_SUCCESS;
 } catch (const std::exception &ex) {
-    fprintf(stderr, "Internal error: %s\n", ex.what());
+    printf("Internal error: %s\n", ex.what());
     exit(EXIT_FAILURE);
 }
 
@@ -290,7 +309,7 @@ static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_js
     if (!use_json)
         printf("Dictionary's name   Word count\n");
     else
-        fputc('[', stdout);
+        putchar('[');
     std::list<std::string> order_list, disable_list;
     for_each_file(dicts_dir_list, ".ifo", order_list,
                   disable_list, [use_json, &first_entry](const std::string &filename, bool) -> void {
@@ -301,7 +320,7 @@ static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_js
                               if (first_entry) {
                                   first_entry = false;
                               } else {
-                                  fputc(',', stdout); // comma between entries
+                                  putchar(','); // comma between entries
                               }
                               printf("{\"name\": \"%s\", \"wordcount\": \"%d\"}", json_escape_string(bookname).c_str(), dict_info.wordcount);
                           } else {
@@ -310,5 +329,5 @@ static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_js
                       }
                   });
     if (use_json)
-        fputs("]\n", stdout);
+        printf("]\n");
 }

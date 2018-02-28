@@ -708,7 +708,7 @@ bool OffsetIndex::save_cache(const std::string &url, bool verbose)
             continue;
         fclose(out);
         if (verbose) {
-            fprintf(stderr, "save to cache %s\n", url.c_str());
+            printf("save to cache %s\n", url.c_str());
         }
         return true;
     }
@@ -739,7 +739,7 @@ bool OffsetIndex::load(const std::string &url, uint64_t wc, uint64_t fsize, bool
         }
         wordoffset[j] = p1 - idxdatabuffer;
         if (!save_cache(url, verbose))
-            fprintf(stderr, "cache update failed\n");
+            printf("cache update failed\n");
     }
 
     if (!(idxfile = fopen(url.c_str(), "rb"))) {
@@ -1622,7 +1622,7 @@ int Libs::LookupWithRule(const char *word, char **ppMatchWord)
 		}
 		//g_pattern_spec_free(pspec);
 	} catch (const std::regex_error &) {
-		fprintf(stderr, "Regex error:%s\n", word);
+		printf("Regex error:%s\n", word);
 		return 0;
 	}
 

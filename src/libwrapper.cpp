@@ -343,7 +343,7 @@ Library::response_out::response_out(const char *str, Library *lib, bool bufferou
         if (bufferout_)
             buffer = "[";
         else
-            fputc('[', stdout);
+            putchar('[');
         return;
     }
     if (lib_->colorize_output_) {
@@ -382,25 +382,26 @@ Library::response_out::response_out(const char *str, Library *lib, bool bufferou
         if (bufferout_) {
             buffer = headerhtml1 + str + headerhtml2;
         } else {
-            fputs(headerhtml1.c_str(), stdout);
-            fputs(str, stdout);
-            fputs(headerhtml2.c_str(), stdout);
+        	printf("%s%s%s",
+            headerhtml1.c_str(),
+            str,
+            headerhtml2.c_str());
         }
     }
 }
 Library::response_out::~response_out()
 {
     if (lib_->json_) {
-        fputc(']', stdout);
+        putchar(']');
     } else if (lib_->colorize_output_) {
-        fputs("</body></html>", stdout);
+        printf("</body></html>");
     }
 }
 Library::response_out &Library::response_out::operator <<(const std::string &content) {
     if (bufferout_) {
         buffer += content;
     } else {
-        fputs(content.c_str(), stdout);
+        printf(content.c_str());
     }
     return *this;
 }
