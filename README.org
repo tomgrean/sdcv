@@ -1,3 +1,7 @@
+* Introduction
+sdwv is base on http://sdcv.sourceforge.net and using https://github.com/yhirose/cpp-httplib
+to make a HTTP server.
+The embeded branch, without dependency for glibc, can be used for Android/Openwrt/etc. with precompiled Android binary in "dist/"
 * How to compile and install
 #+BEGIN_SRC sh
 mkdir /tmp/build-sdwv
