@@ -50,6 +50,29 @@ static const char *ABR_VISFMT = ESC_GREEN;
 
 std::map<std::string, std::string> *Library::pbookname_to_ifo = nullptr;
 
+static std::string htmlredirect(const char *str, guint32 &sec_size)
+{
+	std::string res;
+	const char *p = str;
+	const char needle[] = "bword://";
+	//replace <A HREF="bword://reflection">reflection</A>
+	//  to    <A HREF="?w=reflection">reflection</A>
+	while (*p) {
+		const char *f = strstr(p, needle);
+		if (f) {
+			res.append(p, f - p);
+			res += "?w=";
+			f += sizeof(needle) - 1;
+			p = f;
+		} else {
+			guint32 length = res.length();
+			res += p;
+			p += res.length() - length;
+		}
+	}
+	sec_size = p - str;
+	return res;
+}
 static std::string text2simplehtml(const char *str, guint32 &sec_size)
 {
     std::string res;
@@ -235,9 +258,7 @@ static std::string parse_data(const std::string &dictname, const gchar *data, bo
         case 'h': // HTML data
             if (*p) {
                 //res += '\n';
-                sec_size = res.length();
-                res += p;
-                sec_size = res.length() - sec_size;
+            	res += htmlredirect(p, sec_size);
             }
             sec_size++;
             break;
