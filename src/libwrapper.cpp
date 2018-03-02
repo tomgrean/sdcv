@@ -49,12 +49,44 @@ static const char *ABR_VISFMT = ESC_GREEN;
 
 std::map<std::string, std::string> *Library::pbookname_to_ifo = nullptr;
 
+static std::string htmlredirect(const char *str, uint32_t &sec_size)
+{
+	std::string res;
+	const char *p = str;
+	const char needle[] = "bword://";
+	//replace <A HREF="bword://reflection">reflection</A>
+	//  to    <A HREF="?w=reflection">reflection</A>
+	while (*p) {
+		const char *f = strstr(p, needle);
+		if (f) {
+			res.append(p, f - p);
+			res += "?w=";
+			f += sizeof(needle) - 1;
+			p = f;
+		} else {
+			uint32_t length = res.length();
+			res += p;
+			p += res.length() - length;
+		}
+	}
+	sec_size = p - str;
+	return res;
+}
 static std::string text2simplehtml(const char *str, uint32_t &sec_size)
 {
     std::string res;
     const char *p = str;
     for (; *p; ++p) {
         switch (*p) {
+        case ' ':
+            if (p[1] == ' ')
+                res += "&nbsp;";
+            else
+                res += ' ';
+            break;
+        case '\t':
+            res += "&nbsp;&nbsp;&nbsp;&nbsp;";
+            break;
         case '\n':
             res += "<br>\n";
             break;
@@ -225,9 +257,7 @@ static std::string parse_data(const std::string &dictname, const char *data, boo
         case 'h': // HTML data
             if (*p) {
                 //res += '\n';
-                sec_size = res.length();
-                res += p;
-                sec_size = res.length() - sec_size;
+            	res += htmlredirect(p, sec_size);
             }
             sec_size++;
             break;
