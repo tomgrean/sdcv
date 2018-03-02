@@ -196,8 +196,8 @@ int main(int argc, char *argv[]) try {
             if (stardict_data_dir) {
                 data_dir = stardict_data_dir;
             } else {
-                data_dir = "/storage/sdcard1/download/dict";
-            	//data_dir = "/usr/share/stardict/dict";
+//                data_dir = "/storage/sdcard1/download/dict";
+            	data_dir = "/usr/share/stardict/dic";
             }
         }
     } else {
@@ -279,7 +279,7 @@ int main(int argc, char *argv[]) try {
     Library::pbookname_to_ifo = &bookname_to_ifo;
     Library lib(colorize, json_output, no_fuzzy);
     lib.load(dicts_dir_list, order_list, disable_list);
-
+printf("dict dir=%s\n", data_dir.c_str());
     if (optind < argc) {
         for (int i = optind; i < argc; ++i)
             if (lib.process_phrase(argv[i], false).length() <= 0) {

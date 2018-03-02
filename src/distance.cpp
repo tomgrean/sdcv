@@ -32,8 +32,7 @@ The Levenshtein distance algorithm has been used in:
     * DNA analysis
     * Plagiarism detection 
 */
-
-#if abcdef
+#if 1
 #include <cstdlib>
 #include <cstring>
 
@@ -62,8 +61,8 @@ static inline int minimum(const int a, const int b, const int c)
         min = c;
     return min;
 }
-template <typename TC=uint32_t>
-int EditDistance::CalEditDistance(const TC *s, const TC *t, const int limit)
+//template <class TC>
+int EditDistance/*<TC>*/::CalEditDistance(const TC *s, const TC *t, const int limit)
 /*Compute levenshtein distance between s and t, this is using QUICK algorithm*/
 {
     int n = 0, m = 0, iLenDif, k, i, j, cost;

@@ -1,9 +1,11 @@
 #pragma once
 
-#if abcdef
+#if 1
 #include <cstdlib>
 #include <cstdint>
 
+#define TC char
+//template <class TC>
 class EditDistance
 {
 public:
@@ -19,12 +21,10 @@ public:
     }
     EditDistance(const EditDistance &) = delete;
     EditDistance &operator=(const EditDistance &) = delete;
-    template <typename TC=uint32_t>
     int CalEditDistance(const TC *s, const TC *t, const int limit);
 
 private:
     int *d;
     int currentelements;
 };
-
 #endif

@@ -431,7 +431,7 @@ Library::response_out &Library::response_out::operator <<(const std::string &con
     if (bufferout_) {
         buffer += content;
     } else {
-        printf(content.c_str());
+        printf("%s", content.c_str());
     }
     return *this;
 }

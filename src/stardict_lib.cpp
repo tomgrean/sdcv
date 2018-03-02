@@ -65,6 +65,7 @@ static inline int stardict_strcmp(const char *s1, const char *s2)
     else
         return a;
 }
+#if 0
 template <typename TC=uint32_t>
 static void unicode_strdown(TC *str)
 {
@@ -73,6 +74,7 @@ static void unicode_strdown(TC *str)
         ++str;
     }
 }
+#endif
 static const char *g_get_user_cache_dir()
 {
 	return ".cache";
@@ -81,26 +83,35 @@ inline static const char *g_utf8_casefold(const char *p)
 {
 	return p;
 }
-static bool g_file_get_contents(const char *filename, char **buffer)
+static std::string g_file_get_contents(const char *filename, bool &result)
 {
 	struct stat stt;
 	FILE *f;
+	char *ppp;
 	int res;
 
 	res = stat(filename, &stt);
-	if (res)
-		return false;
-	*buffer = (char*)malloc(stt.st_size);
-	if (*buffer == nullptr)
-		return false;
+	if (res) {
+		result = false;
+		return std::string();
+	}
+	ppp = new char[stt.st_size];
+	if (ppp == nullptr) {
+		result = false;
+		return std::string();
+	}
 	f = fopen(filename, "rb");
 	if (f == nullptr) {
-		free(*buffer);
-		return false;
+		result = false;
+		delete[]ppp;
+		return std::string();
 	}
-	fread(*buffer, 1, stt.st_size, f);
+	fread(ppp, 1, stt.st_size, f);
 	fclose(f);
-	return true;
+	result = true;
+	std::string x(ppp);
+	delete[]ppp;
+	return x;
 }
 inline static char *g_utf8_strdown(const char *p)
 {
@@ -159,8 +170,10 @@ bool DictInfo::load_from_ifo_file(const std::string &ifofilename,
                                   bool istreedict)
 {
     ifo_file_name = ifofilename;
-    char *buffer;
-    if (!g_file_get_contents(ifofilename.c_str(), (&buffer)))
+    //char *buffer;
+    bool result;
+    const std::string buffer(g_file_get_contents(ifofilename.c_str(), result));
+    if (!result)
         return false;
 
     static const char TREEDICT_MAGIC_DATA[] = "StarDict's treedict ifo file";
@@ -171,20 +184,20 @@ bool DictInfo::load_from_ifo_file(const std::string &ifofilename,
     //if (!g_str_has_prefix(
     //        g_str_has_prefix((buffer), (const char *)(utf8_bom)) ? (buffer) + 3 : (buffer),
     //        magic_data)) {
-    const char *checker = buffer;
+    const char *checker = buffer.c_str();
     if (!strncmp((const char*)utf8_bom, checker, 3))
 		checker += 3;
     if (strncmp(magic_data, checker, strlen(magic_data))) {
         return false;
     }
 
-    char *p1 = (buffer) + strlen(magic_data) - 1;
+    const char *p1 = (buffer.c_str()) + strlen(magic_data) - 1;
 
-    char *p2 = strstr(p1, "\nwordcount=");
+    const char *p2 = strstr(p1, "\nwordcount=");
     if (p2 == nullptr)
         return false;
 
-    char *p3 = strchr(p2 + sizeof("\nwordcount=") - 1, '\n');
+    const char *p3 = strchr(p2 + sizeof("\nwordcount=") - 1, '\n');
 
     wordcount = atol(std::string(p2 + sizeof("\nwordcount=") - 1, p3 - (p2 + sizeof("\nwordcount=") - 1)).c_str());
 
@@ -318,7 +331,7 @@ char *DictBase::GetWordData(uint32_t idxitem_offset, uint32_t idxitem_size)
         data = (char *)malloc(data_size);
         char *p1, *p2;
         p1 = data + sizeof(uint32_t);
-        p2 = (origin_data);
+        p2 = origin_data;
         uint32_t sec_size;
         //copy the head items.
         for (int i = 0; i < sametypesequence_len - 1; i++) {
@@ -393,6 +406,7 @@ char *DictBase::GetWordData(uint32_t idxitem_offset, uint32_t idxitem_size)
             break;
         }
         set_uint32(data, data_size);
+        free(origin_data);
     } else {
         data = (char *)malloc(idxitem_size + sizeof(uint32_t));
         if (dictfile) {
@@ -1495,12 +1509,24 @@ bool Libs::SimpleLookupWord(const char *sWord, int64_t &iWordIndex, int iLib)
     return bFound;
 }
 
-bool Libs::LookupWithFuzzy(const char */*sWord*/, char */*reslist*/[], int /*reslist_size*/)
+bool Libs::LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size)
 {
-#if abcdef
+#if 1
     if (sWord[0] == '\0')
         return false;
+#define TCH char
 
+    struct Fwrapper {
+    	Fwrapper(int size) {
+    		f = new Fuzzystruct[size];
+    	}
+    	~Fwrapper() {
+    		delete []f;
+    	}
+    	Fuzzystruct *f;
+    };
+    //Fwrapper fw(reslist_size);
+    //Fuzzystruct *oFuzzystruct = fw.f;
     Fuzzystruct oFuzzystruct[reslist_size];
 
     for (int i = 0; i < reslist_size; i++) {
@@ -1514,11 +1540,17 @@ bool Libs::LookupWithFuzzy(const char */*sWord*/, char */*reslist*/[], int /*res
 
     int64_t iCheckWordLen;
     const char *sCheck;
-    gunichar *ucs4_str1, *ucs4_str2;
+    TCH *ucs4_str1, *ucs4_str2;
     int64_t ucs4_str2_len;
 
+#if 0
     ucs4_str2 = g_utf8_to_ucs4_fast(sWord, -1, &ucs4_str2_len);
     unicode_strdown(ucs4_str2);
+#else
+    // only do english...
+    ucs4_str2 = g_utf8_strdown(sWord);
+    ucs4_str2_len = strlen(ucs4_str2);
+#endif
 
     for (size_t iLib = 0; iLib < oLib.size(); ++iLib) {
         if (progress_func)
@@ -1531,14 +1563,20 @@ bool Libs::LookupWithFuzzy(const char */*sWord*/, char */*reslist*/[], int /*res
         for (int index = 0; index < iwords; index++) {
             sCheck = poGetWord(index, iLib);
             // tolower and skip too long or too short words
-            iCheckWordLen = strlen(sCheck, -1);
+            iCheckWordLen = strlen(sCheck);
             if (iCheckWordLen - ucs4_str2_len >= iMaxDistance || ucs4_str2_len - iCheckWordLen >= iMaxDistance)
                 continue;
+#if 0
             ucs4_str1 = g_utf8_to_ucs4_fast(sCheck, -1, nullptr);
             if (iCheckWordLen > ucs4_str2_len)
                 ucs4_str1[ucs4_str2_len] = 0;
             unicode_strdown(ucs4_str1);
-
+#else
+            // only do english...
+            ucs4_str1 = g_utf8_strdown(sCheck);
+            if (iCheckWordLen > ucs4_str2_len)
+            	ucs4_str1[ucs4_str2_len] = 0;
+#endif
             iDistance = oEditDistance.CalEditDistance(ucs4_str1, ucs4_str2, iMaxDistance);
             free(ucs4_str1);
             if (iDistance < iMaxDistance && iDistance < ucs4_str2_len) {
@@ -1600,7 +1638,7 @@ int Libs::LookupWithRule(const char *word, char **ppMatchWord)
     int iMatchCount = 0;
 
 	try {
-		std::regex spec(word, std::regex::egrep | std::regex::icase);
+		std::regex spec(word, std::regex::egrep | std::regex::icase | std::regex::nosubs);
 		for (std::vector<Dict *>::size_type iLib = 0; iLib < oLib.size(); iLib++) {
 			//if(oLibs.LookdupWordsWithRule(pspec,aiIndex,MAX_MATCH_ITEM_PER_LIB+1-iMatchCount,iLib))
 			// -iMatchCount,so save time,but may got less result and the word may repeat.
