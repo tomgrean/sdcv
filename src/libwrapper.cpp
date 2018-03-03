@@ -51,26 +51,26 @@ std::map<std::string, std::string> *Library::pbookname_to_ifo = nullptr;
 
 static std::string htmlredirect(const char *str, uint32_t &sec_size)
 {
-	std::string res;
-	const char *p = str;
-	const char needle[] = "bword://";
-	//replace <A HREF="bword://reflection">reflection</A>
-	//  to    <A HREF="?w=reflection">reflection</A>
-	while (*p) {
-		const char *f = strstr(p, needle);
-		if (f) {
-			res.append(p, f - p);
-			res += "?w=";
-			f += sizeof(needle) - 1;
-			p = f;
-		} else {
-			uint32_t length = res.length();
-			res += p;
-			p += res.length() - length;
-		}
-	}
-	sec_size = p - str;
-	return res;
+    std::string res;
+    const char *p = str;
+    const char needle[] = "bword://";
+    //replace <A HREF="bword://reflection">reflection</A>
+    //  to    <A HREF="?w=reflection">reflection</A>
+    while (*p) {
+        const char *f = strstr(p, needle);
+        if (f) {
+            res.append(p, f - p);
+            res += "?w=";
+            f += sizeof(needle) - 1;
+            p = f;
+        } else {
+            uint32_t length = res.length();
+            res += p;
+            p += res.length() - length;
+        }
+    }
+    sec_size = p - str;
+    return res;
 }
 static std::string text2simplehtml(const char *str, uint32_t &sec_size)
 {
@@ -257,7 +257,7 @@ static std::string parse_data(const std::string &dictname, const char *data, boo
         case 'h': // HTML data
             if (*p) {
                 //res += '\n';
-            	res += htmlredirect(p, sec_size);
+                res += htmlredirect(p, sec_size);
             }
             sec_size++;
             break;
@@ -412,7 +412,7 @@ Library::response_out::response_out(const char *str, Library *lib, bool bufferou
         if (bufferout_) {
             buffer = headerhtml1 + str + headerhtml2;
         } else {
-        	printf("%s%s%s",
+            printf("%s%s%s",
             headerhtml1.c_str(),
             str,
             headerhtml2.c_str());

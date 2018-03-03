@@ -78,13 +78,13 @@ namespace httplib
 {
 static std::string httplib_to_string(int v)
 {
-	char buf[12];
-	snprintf(buf, sizeof(buf), "%d", v);
-	return std::string(buf);
+    char buf[12];
+    snprintf(buf, sizeof(buf), "%d", v);
+    return std::string(buf);
 }
 static inline int httplib_stoi(std::string str, int begin = 0, int base = 10)
 {
-	return (int)strtol(str.c_str() + begin, nullptr, base);
+    return (int)strtol(str.c_str() + begin, nullptr, base);
 }
 
 namespace detail {
@@ -852,7 +852,7 @@ inline std::string encode_url(const std::string& s)
         case ':':  result += "%3A"; break;
         case ';':  result += "%3B"; break;
         default:
-            if (s[i] < 0) {
+            if (static_cast<signed char>(s[i]) < 0) {
                 result += '%';
                 char hex[4];
                 size_t len = snprintf(hex, sizeof(hex) - 1, "%02X", (unsigned char)s[i]);

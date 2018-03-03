@@ -77,92 +77,92 @@ static void unicode_strdown(TC *str)
 #endif
 static const char *g_get_user_cache_dir()
 {
-	return ".cache";
+    return ".cache";
 }
 inline static const char *g_utf8_casefold(const char *p)
 {
-	return p;
+    return p;
 }
 static std::string g_file_get_contents(const char *filename, bool &result)
 {
-	struct stat stt;
-	FILE *f;
-	char *ppp;
-	int res;
+    struct stat stt;
+    FILE *f;
+    char *ppp;
+    int res;
 
-	res = stat(filename, &stt);
-	if (res) {
-		result = false;
-		return std::string();
-	}
-	ppp = new char[stt.st_size];
-	if (ppp == nullptr) {
-		result = false;
-		return std::string();
-	}
-	f = fopen(filename, "rb");
-	if (f == nullptr) {
-		result = false;
-		delete[]ppp;
-		return std::string();
-	}
-	fread(ppp, 1, stt.st_size, f);
-	fclose(f);
-	result = true;
-	std::string x(ppp);
-	delete[]ppp;
-	return x;
+    res = stat(filename, &stt);
+    if (res) {
+        result = false;
+        return std::string();
+    }
+    ppp = new char[stt.st_size];
+    if (ppp == nullptr) {
+        result = false;
+        return std::string();
+    }
+    f = fopen(filename, "rb");
+    if (f == nullptr) {
+        result = false;
+        delete[]ppp;
+        return std::string();
+    }
+    fread(ppp, 1, stt.st_size, f);
+    fclose(f);
+    result = true;
+    std::string x(ppp);
+    delete[]ppp;
+    return x;
 }
 inline static char *g_utf8_strdown(const char *p)
 {
-	if (!p)
-		return nullptr;
-	char *result;
+    if (!p)
+        return nullptr;
+    char *result;
 
-	result = strdup(p);
+    result = strdup(p);
 
-	for (char *x = result; *x; ++x) {
-		if (isupper(*x)) {
-			*x = tolower(*x);
-		}
-	}
-	return result;
+    for (char *x = result; *x; ++x) {
+        if (isupper(*x)) {
+            *x = tolower(*x);
+        }
+    }
+    return result;
 }
 inline static char *g_utf8_strup(const char *p)
 {
-	if (!p)
-		return nullptr;
-	char *result;
-	result = strdup(p);
+    if (!p)
+        return nullptr;
+    char *result;
+    result = strdup(p);
 
-	for (char *x = result; *x; ++x) {
-		if (islower(*x)) {
-			*x = toupper(*x);
-		}
-	}
-	return result;
+    for (char *x = result; *x; ++x) {
+        if (islower(*x)) {
+            *x = toupper(*x);
+        }
+    }
+    return result;
 }
 inline static char *g_utf8_camelcase(const char *p)
 {
-	if (!p)
-		return nullptr;
-	char *result;
-	result = strdup(p);
-	bool firstChar = true;
+    if (!p)
+        return nullptr;
+    char *result;
+    result = strdup(p);
+    bool firstChar = true;
 
-	for (char *x = result; *x; ++x) {
-		if (isalpha(*x)) {
-			if (firstChar) {
-				firstChar = false;
-				*x = toupper(*x);
-			} else {
-				*x = tolower(*x);
-			}
-		} else {
-			firstChar = true;
-		}
-	}
-	return result;
+    for (char *x = result; *x; ++x) {
+        if (isalpha(*x)) {
+            if (firstChar) {
+                firstChar = false;
+                *x = toupper(*x);
+            } else {
+                *x = tolower(*x);
+            }
+        } else {
+            firstChar = true;
+        }
+    }
+    return result;
 }
 }
 
@@ -186,7 +186,7 @@ bool DictInfo::load_from_ifo_file(const std::string &ifofilename,
     //        magic_data)) {
     const char *checker = buffer.c_str();
     if (!strncmp((const char*)utf8_bom, checker, 3))
-		checker += 3;
+        checker += 3;
     if (strncmp(magic_data, checker, strlen(magic_data))) {
         return false;
     }
@@ -484,7 +484,7 @@ bool DictBase::SearchData(std::vector<std::string> &SearchWords, uint32_t idxite
         case 'k':
             sec_size = idxitem_size - (p - origin_data);
             for (j = 0; j < nWord; j++) {
-            	char *t = strstr(p, SearchWords[j].c_str());
+                char *t = strstr(p, SearchWords[j].c_str());
                 if (!WordFind[j] && t && t - p < sec_size) {
                     WordFind[j] = true;
                     ++nfound;
@@ -1042,12 +1042,12 @@ bool Dict::LookupWithRule(const std::regex &spec, int64_t *aIndex, int iBuffLen)
 {
     int iIndexCount = 0;
 
-	for (uint32_t i = 0; i < narticles() && iIndexCount < (iBuffLen - 1); i++)
-		if (std::regex_match(get_key(i), spec))
-		//if (g_pattern_match_string(pspec, get_key(i)))
-			aIndex[iIndexCount++] = i;
+    for (uint32_t i = 0; i < narticles() && iIndexCount < (iBuffLen - 1); i++)
+        if (std::regex_match(get_key(i), spec))
+        //if (g_pattern_match_string(pspec, get_key(i)))
+            aIndex[iIndexCount++] = i;
 
-	aIndex[iIndexCount] = -1; // -1 is the end.
+    aIndex[iIndexCount] = -1; // -1 is the end.
     return iIndexCount > 0;
 }
 
@@ -1517,17 +1517,17 @@ bool Libs::LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size)
 #define TCH char
 
     struct Fwrapper {
-    	Fwrapper(int size) {
-    		f = new Fuzzystruct[size];
-    	}
-    	~Fwrapper() {
-    		delete []f;
-    	}
-    	Fuzzystruct *f;
+        Fwrapper(int size) {
+            f = new Fuzzystruct[size];
+        }
+        ~Fwrapper() {
+            delete []f;
+        }
+        Fuzzystruct *f;
     };
-    //Fwrapper fw(reslist_size);
-    //Fuzzystruct *oFuzzystruct = fw.f;
-    Fuzzystruct oFuzzystruct[reslist_size];
+    Fwrapper fw(reslist_size);
+    Fuzzystruct *oFuzzystruct = fw.f;
+    //Fuzzystruct oFuzzystruct[reslist_size];
 
     for (int i = 0; i < reslist_size; i++) {
         oFuzzystruct[i].pMatchWord = nullptr;
@@ -1575,7 +1575,7 @@ bool Libs::LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size)
             // only do english...
             ucs4_str1 = g_utf8_strdown(sCheck);
             if (iCheckWordLen > ucs4_str2_len)
-            	ucs4_str1[ucs4_str2_len] = 0;
+                ucs4_str1[ucs4_str2_len] = 0;
 #endif
             iDistance = oEditDistance.CalEditDistance(ucs4_str1, ucs4_str2, iMaxDistance);
             free(ucs4_str1);
@@ -1637,34 +1637,34 @@ int Libs::LookupWithRule(const char *word, char **ppMatchWord)
     int64_t aiIndex[MAX_MATCH_ITEM_PER_LIB + 1];
     int iMatchCount = 0;
 
-	try {
-		std::regex spec(word, std::regex::egrep | std::regex::icase | std::regex::nosubs);
-		for (std::vector<Dict *>::size_type iLib = 0; iLib < oLib.size(); iLib++) {
-			//if(oLibs.LookdupWordsWithRule(pspec,aiIndex,MAX_MATCH_ITEM_PER_LIB+1-iMatchCount,iLib))
-			// -iMatchCount,so save time,but may got less result and the word may repeat.
+    try {
+        std::regex spec(word, std::regex::egrep | std::regex::icase | std::regex::nosubs);
+        for (std::vector<Dict *>::size_type iLib = 0; iLib < oLib.size(); iLib++) {
+            //if(oLibs.LookdupWordsWithRule(pspec,aiIndex,MAX_MATCH_ITEM_PER_LIB+1-iMatchCount,iLib))
+            // -iMatchCount,so save time,but may got less result and the word may repeat.
 
-			if (oLib[iLib]->LookupWithRule(spec, aiIndex, MAX_MATCH_ITEM_PER_LIB + 1)) {
-				if (progress_func)
-					progress_func();
-				for (int i = 0; aiIndex[i] != -1; i++) {
-					const char *sMatchWord = poGetWord(aiIndex[i], iLib);
-					bool bAlreadyInList = false;
-					for (int j = 0; j < iMatchCount; j++) {
-						if (strcmp(ppMatchWord[j], sMatchWord) == 0) { //already in list
-							bAlreadyInList = true;
-							break;
-						}
-					}
-					if (!bAlreadyInList)
-						ppMatchWord[iMatchCount++] = strdup(sMatchWord);
-				}
-			}
-		}
-		//g_pattern_spec_free(pspec);
-	} catch (const std::regex_error &) {
-		printf("Regex error:%s\n", word);
-		return 0;
-	}
+            if (oLib[iLib]->LookupWithRule(spec, aiIndex, MAX_MATCH_ITEM_PER_LIB + 1)) {
+                if (progress_func)
+                    progress_func();
+                for (int i = 0; aiIndex[i] != -1; i++) {
+                    const char *sMatchWord = poGetWord(aiIndex[i], iLib);
+                    bool bAlreadyInList = false;
+                    for (int j = 0; j < iMatchCount; j++) {
+                        if (strcmp(ppMatchWord[j], sMatchWord) == 0) { //already in list
+                            bAlreadyInList = true;
+                            break;
+                        }
+                    }
+                    if (!bAlreadyInList)
+                        ppMatchWord[iMatchCount++] = strdup(sMatchWord);
+                }
+            }
+        }
+        //g_pattern_spec_free(pspec);
+    } catch (const std::regex_error &) {
+        printf("Regex error:%s\n", word);
+        return 0;
+    }
 
     if (iMatchCount) // sort it.
         std::sort(ppMatchWord, ppMatchWord + iMatchCount, [](const char *lh, const char *rh) -> bool {

@@ -96,20 +96,20 @@ int main(int argc, char *argv[]) try {
 
             switch (c) {
             case 'h':
-            	show_v1_h2 = 2;
-            	break;
+                show_v1_h2 = 2;
+                break;
             case 'v':
-            	show_v1_h2 = 1;
-            	break;
+                show_v1_h2 = 1;
+                break;
             case 'l':
                 show_list_dicts = true;
                 break;
             case 'u':
-            	arg = 1;
-            	if (optarg)
-            		use_dict_list = optarg;
-            	else
-            		printf("Omitting arg to '-%c'.\n", c);
+                arg = 1;
+                if (optarg)
+                    use_dict_list = optarg;
+                else
+                    printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'j':
                 json_output = true;
@@ -118,30 +118,30 @@ int main(int argc, char *argv[]) try {
                 no_fuzzy = true;
                 break;
             case '2':
-            	arg = 1;
-            	if (optarg)
-            		opt_data_dir = optarg;
-            	else
-            		printf("Omitting arg to '-%c'.\n", c);
+                arg = 1;
+                if (optarg)
+                    opt_data_dir = optarg;
+                else
+                    printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'x':
-            	only_data_dir = true;
-            	break;
+                only_data_dir = true;
+                break;
             case 'c':
-            	colorize = true;
-            	break;
+                colorize = true;
+                break;
             case 'p':
-            	arg = 1;
-            	if (optarg)
-            		listen_port = (int)strtol(optarg, NULL, 10);
-            	else {
-            		printf("no port, use default 8888\n");
-            		listen_port = 8888;
-            	}
-            	break;
+                arg = 1;
+                if (optarg)
+                    listen_port = (int)strtol(optarg, NULL, 10);
+                else {
+                    printf("no port, use default 8888\n");
+                    listen_port = 8888;
+                }
+                break;
             case 'd':
-            	daemonize = true;
-            	break;
+                daemonize = true;
+                break;
             case '?':
                 break;
 
@@ -151,41 +151,41 @@ int main(int argc, char *argv[]) try {
         }
 
         if (arg) {
-        	optind++;
+            optind++;
         }
 
-		if (listen_port > 0 && !colorize) {
-			printf("-p implies -c.\n");
-			colorize = true;
-		}
+        if (listen_port > 0 && !colorize) {
+            printf("-p implies -c.\n");
+            colorize = true;
+        }
     } else {
-    	show_v1_h2 = 2;
+        show_v1_h2 = 2;
     }
     if (show_v1_h2 == 1) {
         printf("Web version of Stardict, version %s\n", gVersion);
         return EXIT_SUCCESS;
     } else if (show_v1_h2 == 2) {
-    	puts(
-    			"Usage:\n"
-    			"  sdwv [OPTION...]  words\n"
-    			"\n"
-    			"Help Options:\n"
-    			"  -h, --help                     Show help options\n"
-    			"\n"
-    			"Application Options:\n"
-    			"  -v, --version                  display version information and exit\n"
-    			"  -l, --list-dicts               display list of available dictionaries and exit\n"
-    			"  -u, --use-dict                 for search use only dictionary with this bookname\n"
-    			"  -j, --json-output              print the result formatted as JSON\n"
-    			"  -e, --exact-search             do not fuzzy-search for similar words, only return exact matches\n"
-    			"  -0, --utf8-output              output must be in utf8\n"
-    			"  -1, --utf8-input               input of sdwv in utf8\n"
-    			"  -2, --data-dir                 use this directory as path to stardict data directory\n"
-    			"  -x, --only-data-dir            only use the dictionaries in data-dir, do not search in user and system directories\n"
-    			"  -c, --color                    colorize the output\n"
-    			"  -p, --port                     the port to listen\n"
-    			"  -d, --daemon                   run in daemon mode.\n"
-    			"\n");
+        puts(
+                "Usage:\n"
+                "  sdwv [OPTION...]  words\n"
+                "\n"
+                "Help Options:\n"
+                "  -h, --help                     Show help options\n"
+                "\n"
+                "Application Options:\n"
+                "  -v, --version                  display version information and exit\n"
+                "  -l, --list-dicts               display list of available dictionaries and exit\n"
+                "  -u, --use-dict                 for search use only dictionary with this bookname\n"
+                "  -j, --json-output              print the result formatted as JSON\n"
+                "  -e, --exact-search             do not fuzzy-search for similar words, only return exact matches\n"
+                "  -0, --utf8-output              output must be in utf8\n"
+                "  -1, --utf8-input               input of sdwv in utf8\n"
+                "  -2, --data-dir                 use this directory as path to stardict data directory\n"
+                "  -x, --only-data-dir            only use the dictionaries in data-dir, do not search in user and system directories\n"
+                "  -c, --color                    colorize the output\n"
+                "  -p, --port                     the port to listen\n"
+                "  -d, --daemon                   run in daemon mode.\n"
+                "\n");
         return EXIT_SUCCESS;
     }
 
@@ -197,27 +197,28 @@ int main(int argc, char *argv[]) try {
                 data_dir = stardict_data_dir;
             } else {
 //                data_dir = "/storage/sdcard1/download/dict";
-            	data_dir = "/usr/share/stardict/dic";
+                //data_dir = "/usr/share/stardict/dic";
+                data_dir = "/mnt/code/dic";
             }
         }
     } else {
-        data_dir = (opt_data_dir);
+        data_dir = opt_data_dir;
     }
 
     if (daemonize) {
-    	show_v1_h2 = open("/dev/null", O_RDWR);
-    	dup2(show_v1_h2, 0);
-    	dup2(show_v1_h2, 1);
-    	dup2(show_v1_h2, 2);
-    	close(show_v1_h2);
-    	show_v1_h2 = fork();
-    	if (show_v1_h2) {
-    		return EXIT_SUCCESS;
-    	}
+        show_v1_h2 = open("/dev/null", O_RDWR);
+        dup2(show_v1_h2, 0);
+        dup2(show_v1_h2, 1);
+        dup2(show_v1_h2, 2);
+        close(show_v1_h2);
+        show_v1_h2 = fork();
+        if (show_v1_h2) {
+            return EXIT_SUCCESS;
+        }
     }
     const char *homedir = getenv("HOME");
-//    if (!homedir)
-//        homedir = g_get_home_dir();
+    if (!homedir)
+        homedir = "/tmp/";
 
     std::list<std::string> dicts_dir_list;
     if (!only_data_dir)
@@ -279,13 +280,8 @@ int main(int argc, char *argv[]) try {
     Library::pbookname_to_ifo = &bookname_to_ifo;
     Library lib(colorize, json_output, no_fuzzy);
     lib.load(dicts_dir_list, order_list, disable_list);
-printf("dict dir=%s\n", data_dir.c_str());
-    if (optind < argc) {
-        for (int i = optind; i < argc; ++i)
-            if (lib.process_phrase(argv[i], false).length() <= 0) {
-                return EXIT_FAILURE;
-            }
-    } else if (listen_port > 0) {
+
+    if (listen_port > 0) {
         httplib::Server serv;
         serv.set_base_dir(data_dir.c_str());
         serv.get("/", [&](const httplib::Request &req, httplib::Response &res) {
@@ -294,13 +290,18 @@ printf("dict dir=%s\n", data_dir.c_str());
         });
         //serv.get("/.*/res/.*", Ser);
         serv.listen("0.0.0.0", (int)listen_port);
+    } else if (optind < argc) {
+        for (int i = optind; i < argc; ++i)
+            if (lib.process_phrase(argv[i], false).length() <= 0) {
+                return 3;
+            }
     } else {
         printf("There is no word.\n");
+        return 4;
     }
     return EXIT_SUCCESS;
 } catch (const std::exception &ex) {
-    printf("Internal error: %s\n", ex.what());
-    exit(EXIT_FAILURE);
+    exit(120);
 }
 
 static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json)

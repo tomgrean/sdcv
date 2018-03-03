@@ -37,11 +37,11 @@ static void __for_each_file(const std::string &dirname, const std::string &suff,
 {
     DIR *dir = opendir(dirname.c_str());
     if (dir) {
-    	const struct dirent *entry;
+        const struct dirent *entry;
 
         while ((entry = readdir(dir)) != nullptr) {
-        	if (entry->d_name[0] == '.')//skip all '.' started.
-        		continue;
+            if (entry->d_name[0] == '.')//skip all '.' started.
+                continue;
             const std::string fullfilename(dirname + G_DIR_SEPARATOR + entry->d_name);
             if (entry->d_type == DT_DIR)
                 __for_each_file(fullfilename, suff, order_list, disable_list, f);
