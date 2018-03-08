@@ -46,11 +46,11 @@ static void __for_each_file(const std::string &dirname, const std::string &suff,
             if (entry->d_type == DT_DIR)
                 __for_each_file(fullfilename, suff, order_list, disable_list, f);
             else if (strstr(entry->d_name, suff.c_str()) && std::find(order_list.begin(), order_list.end(), fullfilename) == order_list.end()) {
-                const bool disable = std::find(disable_list.begin(),
+                const auto found = std::find(disable_list.begin(),
                                                disable_list.end(),
-                                               fullfilename)
-                                     != disable_list.end();
-                f(fullfilename, disable);
+                                               fullfilename);
+                if (found == disable_list.end())
+                    f(fullfilename, false);
             }
         }
         closedir(dir);
@@ -62,8 +62,7 @@ void for_each_file(const std::list<std::string> &dirs_list, const std::string &s
                    const std::function<void(const std::string &, bool)> &f)
 {
     for (const std::string &item : order_list) {
-        const bool disable = std::find(disable_list.begin(), disable_list.end(), item) != disable_list.end();
-        f(item, disable);
+        f(item, true);
     }
     for (const std::string &item : dirs_list)
         __for_each_file(item, suff, order_list, disable_list, f);

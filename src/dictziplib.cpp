@@ -181,8 +181,8 @@ int DictData::read_header(const std::string &fname, int computeCRC)
 
             if (this->version != 1) {
                 //err_internal( __FUNCTION__,
-                //	  "dzip header version %d not supported\n",
-                //	  this->version );
+                //      "dzip header version %d not supported\n",
+                //      this->version );
             }
 
             this->chunkLength = getc(str) << 0;
@@ -454,7 +454,7 @@ void DictData::read(char *buffer, unsigned long start, unsigned long size)
                 } else {
                     if (count != this->chunkLength) {
                         //err_internal( __FUNCTION__,
-                        //	"Length = %d instead of %d\n",
+                        //    "Length = %d instead of %d\n",
                         //count, this->chunkLength );
                     }
                     memcpy(pt, inBuffer + firstOffset,

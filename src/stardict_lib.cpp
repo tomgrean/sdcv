@@ -1057,24 +1057,36 @@ Libs::~Libs()
         delete p;
 }
 
-void Libs::load_dict(const std::string &url)
+bool Libs::load_dict(const std::string &url)
 {
     Dict *lib = new Dict;
-    if (lib->load(url, verbose_))
+    if (lib->load(url, verbose_)) {
         oLib.push_back(lib);
-    else
-        delete lib;
+        return true;
+    }
+    delete lib;
+    return false;
 }
 
 void Libs::load(const std::list<std::string> &dicts_dirs,
                 const std::list<std::string> &order_list,
                 const std::list<std::string> &disable_list)
 {
+    int order_cnt = 0;
     for_each_file(dicts_dirs, ".ifo", order_list, disable_list,
-                  [this](const std::string &url, bool disable) -> void {
-                      if (!disable)
-                          load_dict(url);
+                  [this, &order_cnt](const std::string &url, bool ordered) {
+                      if (load_dict(url) && ordered)
+                          order_cnt++;
                   });
+    auto i = oLib.begin();
+    while (--order_cnt >= 0)
+        ++i;
+    std::sort(i, oLib.end(), [](Dict *l, Dict *r) -> bool {
+        if (l && r) {
+            return l->ifofilename() < r->ifofilename();
+        }
+        return false;
+    });
 }
 
 const char *Libs::poGetCurrentWord(int64_t *iCurrent)
@@ -1515,18 +1527,7 @@ bool Libs::LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size)
     if (sWord[0] == '\0')
         return false;
 #define TCH char
-
-    struct Fwrapper {
-        Fwrapper(int size) {
-            f = new Fuzzystruct[size];
-        }
-        ~Fwrapper() {
-            delete []f;
-        }
-        Fuzzystruct *f;
-    };
-    Fwrapper fw(reslist_size);
-    Fuzzystruct *oFuzzystruct = fw.f;
+    std::vector<Fuzzystruct> oFuzzystruct(reslist_size);
     //Fuzzystruct oFuzzystruct[reslist_size];
 
     for (int i = 0; i < reslist_size; i++) {
@@ -1613,7 +1614,7 @@ bool Libs::LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size)
     free(ucs4_str2);
 
     if (Found) // sort with distance
-        std::sort(oFuzzystruct, oFuzzystruct + reslist_size, [](const Fuzzystruct &lh, const Fuzzystruct &rh) -> bool {
+        std::sort(oFuzzystruct.begin(), oFuzzystruct.end(), [](const Fuzzystruct &lh, const Fuzzystruct &rh) -> bool {
             if (lh.iMatchWordDistance != rh.iMatchWordDistance)
                 return lh.iMatchWordDistance < rh.iMatchWordDistance;
 

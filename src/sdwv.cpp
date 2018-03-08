@@ -59,10 +59,10 @@ static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_js
 int main(int argc, char *argv[]) try {
     int show_v1_h2 = 0;
     bool show_list_dicts = false;
-    std::string use_dict_list;
+    const char *use_dict_list = nullptr;
     bool json_output = false;
     bool no_fuzzy = false;
-    std::string opt_data_dir;
+    const char *opt_data_dir = nullptr;
     bool only_data_dir = false;
     bool colorize = false;
     bool daemonize = false;
@@ -170,39 +170,39 @@ int main(int argc, char *argv[]) try {
                 "  sdwv [OPTION...]  words\n"
                 "\n"
                 "Help Options:\n"
-                "  -h, --help                     Show help options\n"
+                "  -h, --help             Show help options\n"
                 "\n"
                 "Application Options:\n"
-                "  -v, --version                  display version information and exit\n"
-                "  -l, --list-dicts               display list of available dictionaries and exit\n"
-                "  -u, --use-dict                 for search use only dictionary with this bookname\n"
-                "  -j, --json-output              print the result formatted as JSON\n"
-                "  -e, --exact-search             do not fuzzy-search for similar words, only return exact matches\n"
-                "  -0, --utf8-output              output must be in utf8\n"
-                "  -1, --utf8-input               input of sdwv in utf8\n"
-                "  -2, --data-dir                 use this directory as path to stardict data directory\n"
-                "  -x, --only-data-dir            only use the dictionaries in data-dir, do not search in user and system directories\n"
-                "  -c, --color                    colorize the output\n"
-                "  -p, --port                     the port to listen\n"
-                "  -d, --daemon                   run in daemon mode.\n"
+                "  -v, --version          display version information and exit\n"
+                "  -l, --list-dicts       display list of available dictionaries and exit\n"
+                "  -u, --use-dict         for search use only dictionary with this bookname\n"
+                "  -j, --json-output      print the result formatted as JSON\n"
+                "  -e, --exact-search     do not fuzzy-search for similar words, only return exact matches\n"
+                "  -0, --utf8-output      output must be in utf8\n"
+                "  -1, --utf8-input       input of sdwv in utf8\n"
+                "  -2, --data-dir         use this directory as path to stardict data directory\n"
+                "  -x, --only-data-dir    only use the dictionaries in data-dir, do not search in user and system directories\n"
+                "  -c, --color            colorize the output\n"
+                "  -p, --port             the port to listen\n"
+                "  -d, --daemon           run in daemon mode.\n"
                 "\n");
         return EXIT_SUCCESS;
     }
 
     const char *stardict_data_dir = getenv("STARDICT_DATA_DIR");
     std::string data_dir;
-    if (opt_data_dir.length() <= 0) {
+    if (opt_data_dir) {
+        data_dir = opt_data_dir;
+    } else {
         if (!only_data_dir) {
             if (stardict_data_dir) {
                 data_dir = stardict_data_dir;
             } else {
 //                data_dir = "/storage/sdcard1/download/dict";
-                //data_dir = "/usr/share/stardict/dic";
-                data_dir = "/mnt/code/dic";
+                data_dir = "/usr/share/stardict/dic";
+//                data_dir = "/mnt/code/dic";
             }
         }
-    } else {
-        data_dir = opt_data_dir;
     }
 
     if (daemonize) {
@@ -229,10 +229,10 @@ int main(int argc, char *argv[]) try {
         return EXIT_SUCCESS;
     }
 
+    std::list<std::string> order_list;
     std::list<std::string> disable_list;
-
     std::map<std::string, std::string> bookname_to_ifo;
-    for_each_file(dicts_dir_list, ".ifo", std::list<std::string>(), std::list<std::string>(),
+    for_each_file(dicts_dir_list, ".ifo", order_list, disable_list,
                   [&bookname_to_ifo](const std::string &fname, bool) {
                       DictInfo dict_info;
                       const bool load_ok = dict_info.load_from_ifo_file(fname, false);
@@ -241,24 +241,23 @@ int main(int argc, char *argv[]) try {
                       bookname_to_ifo[dict_info.bookname] = dict_info.ifo_file_name;
                   });
 
-    std::list<std::string> order_list;
-    if (use_dict_list.length() > 0) {
-        for (auto &&x : bookname_to_ifo) {
-            const char *p = (use_dict_list.c_str());
-            for (; p != nullptr; ++p)
-                if (x.first.compare(p) == 0) {
-                    break;
-                }
-            if (p == nullptr) {
+    if (use_dict_list) {
+        char *dict_list_str = strdup(use_dict_list);
+        char *p = dict_list_str;
+        while (true) {
+            char *t = strsep(&p, ";\n");
+            if (!t)
+                break;
+            auto found = bookname_to_ifo.find(t);
+            if (found != bookname_to_ifo.end())
+                order_list.push_back(found->second);
+        }
+        free(dict_list_str);
+        for (auto &x : bookname_to_ifo) {
+            const auto found = std::find(order_list.begin(), order_list.end(), x.second);
+            if (found == order_list.end()) {
                 disable_list.push_back(x.second);
             }
-        }
-
-        // add bookname to list
-        const char *p = (use_dict_list.c_str());
-        while (p) {
-            order_list.push_back(bookname_to_ifo.at(p));
-            ++p;
         }
     } else {
         const std::string odering_cfg_file = std::string(homedir) + G_DIR_SEPARATOR ".sdwv_ordering";

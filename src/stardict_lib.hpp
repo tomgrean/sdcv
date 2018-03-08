@@ -163,7 +163,7 @@ public:
     Libs(const Libs &) = delete;
     Libs &operator=(const Libs &) = delete;
 
-    void load_dict(const std::string &url);
+    bool load_dict(const std::string &url);
     void load(const std::list<std::string> &dicts_dirs,
               const std::list<std::string> &order_list,
               const std::list<std::string> &disable_list);
