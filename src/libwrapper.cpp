@@ -457,11 +457,11 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
     if (!param_.json_output && param_.colorize) {
         out << "<ol>";
         for (TSearchResult &res : res_list) {
-			// put list-of-contents
-			out << "<li><a href='#" << res.idname << "'>"
-				<< res.def << " : " << res.bookname
-				<< "</a></li>\n";
-		}
+            // put list-of-contents
+            out << "<li><a href='#" << res.idname << "'>"
+                << res.def << " : " << res.bookname
+                << "</a></li>\n";
+        }
         out << "</ol>";
     }
 
@@ -528,7 +528,7 @@ const std::string Library::process_phrase(const char *str, bool buffer_out)
         break;
     case qtSIMPLE:
         SimpleLookup(str, res_list);
-        if (res_list.empty() && fuzzy_)
+        if (res_list.empty() && !param_.no_fuzzy)
             LookupWithFuzzy(str, res_list);
         break;
     case qtDATA:

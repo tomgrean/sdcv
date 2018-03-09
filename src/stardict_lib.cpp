@@ -83,7 +83,7 @@ inline static const char *g_utf8_casefold(const char *p)
 {
     return p;
 }
-static std::string g_file_get_contents(const char *filename, bool &result)
+static char *g_file_get_contents(const char *filename)
 {
     struct stat stt;
     FILE *f;
@@ -92,26 +92,20 @@ static std::string g_file_get_contents(const char *filename, bool &result)
 
     res = stat(filename, &stt);
     if (res) {
-        result = false;
-        return std::string();
-    }
-    ppp = new char[stt.st_size];
-    if (ppp == nullptr) {
-        result = false;
-        return std::string();
+        return nullptr;
     }
     f = fopen(filename, "rb");
     if (f == nullptr) {
-        result = false;
-        delete[]ppp;
-        return std::string();
+        return nullptr;
+    }
+    ppp = (char*)malloc(stt.st_size);
+    if (ppp == nullptr) {
+        fclose(f);
+        return nullptr;
     }
     fread(ppp, 1, stt.st_size, f);
     fclose(f);
-    result = true;
-    std::string x(ppp);
-    delete[]ppp;
-    return x;
+    return ppp;
 }
 inline static char *g_utf8_strdown(const char *p)
 {
@@ -122,35 +116,26 @@ inline static char *g_utf8_strdown(const char *p)
     result = strdup(p);
 
     for (char *x = result; *x; ++x) {
-        if (isupper(*x)) {
-            *x = tolower(*x);
-        }
+        *x = tolower(*x);
     }
     return result;
 }
-inline static char *g_utf8_strup(const char *p)
+inline static void utf8_strup(char *p)
 {
     if (!p)
-        return nullptr;
-    char *result;
-    result = strdup(p);
+        return;
 
-    for (char *x = result; *x; ++x) {
-        if (islower(*x)) {
-            *x = toupper(*x);
-        }
+    for (char *x = p; *x; ++x) {
+        *x = toupper(*x);
     }
-    return result;
 }
-inline static char *g_utf8_camelcase(const char *p)
+inline static void utf8_camelcase(char *p)
 {
     if (!p)
-        return nullptr;
-    char *result;
-    result = strdup(p);
+        return;
     bool firstChar = true;
 
-    for (char *x = result; *x; ++x) {
+    for (char *x = p; *x; ++x) {
         if (isalpha(*x)) {
             if (firstChar) {
                 firstChar = false;
@@ -162,125 +147,124 @@ inline static char *g_utf8_camelcase(const char *p)
             firstChar = true;
         }
     }
-    return result;
 }
 }
 
-bool DictInfo::load_from_ifo_file(const std::string &ifofilename,
-                                  bool istreedict)
-{
-    ifo_file_name = ifofilename;
-    //char *buffer;
-    bool result;
-    const std::string buffer(g_file_get_contents(ifofilename.c_str(), result));
-    if (!result)
-        return false;
-
-    static const char TREEDICT_MAGIC_DATA[] = "StarDict's treedict ifo file";
-    static const char DICT_MAGIC_DATA[] = "StarDict's dict ifo file";
-
-    const char *magic_data = istreedict ? TREEDICT_MAGIC_DATA : DICT_MAGIC_DATA;
-    static const unsigned char utf8_bom[] = { 0xEF, 0xBB, 0xBF, '\0' };
-    //if (!g_str_has_prefix(
-    //        g_str_has_prefix((buffer), (const char *)(utf8_bom)) ? (buffer) + 3 : (buffer),
-    //        magic_data)) {
-    const char *checker = buffer.c_str();
-    if (!strncmp((const char*)utf8_bom, checker, 3))
-        checker += 3;
-    if (strncmp(magic_data, checker, strlen(magic_data))) {
-        return false;
-    }
-
-    const char *p1 = (buffer.c_str()) + strlen(magic_data) - 1;
-
-    const char *p2 = strstr(p1, "\nwordcount=");
-    if (p2 == nullptr)
-        return false;
-
-    const char *p3 = strchr(p2 + sizeof("\nwordcount=") - 1, '\n');
-
-    wordcount = atol(std::string(p2 + sizeof("\nwordcount=") - 1, p3 - (p2 + sizeof("\nwordcount=") - 1)).c_str());
-
-    if (istreedict) {
-        p2 = strstr(p1, "\ntdxfilesize=");
-        if (p2 == nullptr)
-            return false;
-
-        p3 = strchr(p2 + sizeof("\ntdxfilesize=") - 1, '\n');
-
-        index_file_size = atol(std::string(p2 + sizeof("\ntdxfilesize=") - 1, p3 - (p2 + sizeof("\ntdxfilesize=") - 1)).c_str());
-
-    } else {
-
-        p2 = strstr(p1, "\nidxfilesize=");
-        if (p2 == nullptr)
-            return false;
-
-        p3 = strchr(p2 + sizeof("\nidxfilesize=") - 1, '\n');
-        index_file_size = atol(std::string(p2 + sizeof("\nidxfilesize=") - 1, p3 - (p2 + sizeof("\nidxfilesize=") - 1)).c_str());
-    }
-
-    p2 = strstr(p1, "\nbookname=");
-
-    if (p2 == nullptr)
-        return false;
-
-    p2 = p2 + sizeof("\nbookname=") - 1;
-    p3 = strchr(p2, '\n');
-    bookname.assign(p2, p3 - p2);
-
-    p2 = strstr(p1, "\nauthor=");
-    if (p2) {
-        p2 = p2 + sizeof("\nauthor=") - 1;
-        p3 = strchr(p2, '\n');
-        author.assign(p2, p3 - p2);
-    }
-
-    p2 = strstr(p1, "\nemail=");
-    if (p2) {
-        p2 = p2 + sizeof("\nemail=") - 1;
-        p3 = strchr(p2, '\n');
-        email.assign(p2, p3 - p2);
-    }
-
-    p2 = strstr(p1, "\nwebsite=");
-    if (p2) {
-        p2 = p2 + sizeof("\nwebsite=") - 1;
-        p3 = strchr(p2, '\n');
-        website.assign(p2, p3 - p2);
-    }
-
-    p2 = strstr(p1, "\ndate=");
-    if (p2) {
-        p2 = p2 + sizeof("\ndate=") - 1;
-        p3 = strchr(p2, '\n');
-        date.assign(p2, p3 - p2);
-    }
-
-    p2 = strstr(p1, "\ndescription=");
-    if (p2) {
-        p2 = p2 + sizeof("\ndescription=") - 1;
-        p3 = strchr(p2, '\n');
-        description.assign(p2, p3 - p2);
-    }
-
-    p2 = strstr(p1, "\nsametypesequence=");
-    if (p2) {
-        p2 += sizeof("\nsametypesequence=") - 1;
-        p3 = strchr(p2, '\n');
-        sametypesequence.assign(p2, p3 - p2);
-    }
-
-    p2 = strstr(p1, "\nsynwordcount=");
-    syn_wordcount = 0;
-    if (p2) {
-        p2 += sizeof("\nsynwordcount=") - 1;
-        p3 = strchr(p2, '\n');
-        syn_wordcount = atol(std::string(p2, p3 - p2).c_str());
-    }
-
-    return true;
-}
+//bool DictInfo::load_from_ifo_file(const std::string &ifofilename,
+//                                  bool istreedict)
+//{
+//    ifo_file_name = ifofilename;
+//    //char *buffer;
+//    bool result;
+//    const std::string buffer(g_file_get_contents(ifofilename.c_str(), result));
+//    if (!result)
+//        return false;
+//
+//    static const char TREEDICT_MAGIC_DATA[] = "StarDict's treedict ifo file";
+//    static const char DICT_MAGIC_DATA[] = "StarDict's dict ifo file";
+//
+//    const char *magic_data = istreedict ? TREEDICT_MAGIC_DATA : DICT_MAGIC_DATA;
+//    static const unsigned char utf8_bom[] = { 0xEF, 0xBB, 0xBF, '\0' };
+//    //if (!g_str_has_prefix(
+//    //        g_str_has_prefix((buffer), (const char *)(utf8_bom)) ? (buffer) + 3 : (buffer),
+//    //        magic_data)) {
+//    const char *checker = buffer.c_str();
+//    if (!strncmp((const char*)utf8_bom, checker, 3))
+//        checker += 3;
+//    if (strncmp(magic_data, checker, strlen(magic_data))) {
+//        return false;
+//    }
+//
+//    const char *p1 = (buffer.c_str()) + strlen(magic_data) - 1;
+//
+//    const char *p2 = strstr(p1, "\nwordcount=");
+//    if (p2 == nullptr)
+//        return false;
+//
+//    const char *p3 = strchr(p2 + sizeof("\nwordcount=") - 1, '\n');
+//
+//    wordcount = atol(std::string(p2 + sizeof("\nwordcount=") - 1, p3 - (p2 + sizeof("\nwordcount=") - 1)).c_str());
+//
+//    if (istreedict) {
+//        p2 = strstr(p1, "\ntdxfilesize=");
+//        if (p2 == nullptr)
+//            return false;
+//
+//        p3 = strchr(p2 + sizeof("\ntdxfilesize=") - 1, '\n');
+//
+//        index_file_size = atol(std::string(p2 + sizeof("\ntdxfilesize=") - 1, p3 - (p2 + sizeof("\ntdxfilesize=") - 1)).c_str());
+//
+//    } else {
+//
+//        p2 = strstr(p1, "\nidxfilesize=");
+//        if (p2 == nullptr)
+//            return false;
+//
+//        p3 = strchr(p2 + sizeof("\nidxfilesize=") - 1, '\n');
+//        index_file_size = atol(std::string(p2 + sizeof("\nidxfilesize=") - 1, p3 - (p2 + sizeof("\nidxfilesize=") - 1)).c_str());
+//    }
+//
+//    p2 = strstr(p1, "\nbookname=");
+//
+//    if (p2 == nullptr)
+//        return false;
+//
+//    p2 = p2 + sizeof("\nbookname=") - 1;
+//    p3 = strchr(p2, '\n');
+//    bookname.assign(p2, p3 - p2);
+//
+//    p2 = strstr(p1, "\nauthor=");
+//    if (p2) {
+//        p2 = p2 + sizeof("\nauthor=") - 1;
+//        p3 = strchr(p2, '\n');
+//        author.assign(p2, p3 - p2);
+//    }
+//
+//    p2 = strstr(p1, "\nemail=");
+//    if (p2) {
+//        p2 = p2 + sizeof("\nemail=") - 1;
+//        p3 = strchr(p2, '\n');
+//        email.assign(p2, p3 - p2);
+//    }
+//
+//    p2 = strstr(p1, "\nwebsite=");
+//    if (p2) {
+//        p2 = p2 + sizeof("\nwebsite=") - 1;
+//        p3 = strchr(p2, '\n');
+//        website.assign(p2, p3 - p2);
+//    }
+//
+//    p2 = strstr(p1, "\ndate=");
+//    if (p2) {
+//        p2 = p2 + sizeof("\ndate=") - 1;
+//        p3 = strchr(p2, '\n');
+//        date.assign(p2, p3 - p2);
+//    }
+//
+//    p2 = strstr(p1, "\ndescription=");
+//    if (p2) {
+//        p2 = p2 + sizeof("\ndescription=") - 1;
+//        p3 = strchr(p2, '\n');
+//        description.assign(p2, p3 - p2);
+//    }
+//
+//    p2 = strstr(p1, "\nsametypesequence=");
+//    if (p2) {
+//        p2 += sizeof("\nsametypesequence=") - 1;
+//        p3 = strchr(p2, '\n');
+//        sametypesequence.assign(p2, p3 - p2);
+//    }
+//
+//    p2 = strstr(p1, "\nsynwordcount=");
+//    syn_wordcount = 0;
+//    if (p2) {
+//        p2 += sizeof("\nsynwordcount=") - 1;
+//        p3 = strchr(p2, '\n');
+//        syn_wordcount = atol(std::string(p2, p3 - p2).c_str());
+//    }
+//
+//    return true;
+//}
 
 char *DictBase::GetWordData(uint32_t idxitem_offset, uint32_t idxitem_size)
 {
@@ -1020,21 +1004,30 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
 
 bool Dict::load_ifofile(const std::string &ifofilename, uint64_t &idxfilesize)
 {
-    DictInfo dict_info;
-    if (!dict_info.load_from_ifo_file(ifofilename, false))
+    const auto &&ifo = load_from_ifo_file(ifofilename, false);
+    if (ifo.size() < 1)
         return false;
-    if (dict_info.wordcount == 0)
+    try {
+        wordcount = strtoul(ifo.at("wordcount").c_str(), NULL, 10);
+        if (wordcount == 0) {
+            return false;
+        }
+        ifo_file_name = ifo.at("ifo_file_name");
+        auto it = ifo.find("synwordcount");
+        if (it != ifo.end())
+            syn_wordcount = strtoul(it->second.c_str(), NULL, 10);
+        else
+            syn_wordcount = 0;
+        bookname = ifo.at("bookname");
+
+        idxfilesize = strtoul(ifo.at("idxfilesize").c_str(), NULL, 10);
+
+        it = ifo.find("sametypesequence");
+        if (it != ifo.end())
+            sametypesequence = it->second;
+    } catch (const std::out_of_range &) {
         return false;
-
-    ifo_file_name = dict_info.ifo_file_name;
-    wordcount = dict_info.wordcount;
-    syn_wordcount = dict_info.syn_wordcount;
-    bookname = dict_info.bookname;
-
-    idxfilesize = dict_info.index_file_size;
-
-    sametypesequence = dict_info.sametypesequence;
-
+    }
     return true;
 }
 
@@ -1060,7 +1053,7 @@ Libs::~Libs()
 bool Libs::load_dict(const std::string &url)
 {
     Dict *lib = new Dict;
-    if (lib->load(url, verbose_)) {
+    if (lib->load(url, !param_.json_output)) {
         oLib.push_back(lib);
         return true;
     }
@@ -1206,33 +1199,29 @@ bool Libs::LookupSimilarWord(const char *sWord, int64_t &iWordIndex, int iLib)
     bool bFound = false;
     char *casestr;
 
+    // to lower case.
+    casestr = g_utf8_strdown(sWord);
+    if (strcmp(casestr, sWord)) {
+        if (oLib[iLib]->Lookup(casestr, iIndex))
+            bFound = true;
+    }
+    // to upper case.
     if (!bFound) {
-        // to lower case.
-        casestr = g_utf8_strdown(sWord);
+        utf8_strup(casestr);
         if (strcmp(casestr, sWord)) {
             if (oLib[iLib]->Lookup(casestr, iIndex))
                 bFound = true;
         }
-        free(casestr);
-        // to upper case.
-        if (!bFound) {
-            casestr = g_utf8_strup(sWord);
-            if (strcmp(casestr, sWord)) {
-                if (oLib[iLib]->Lookup(casestr, iIndex))
-                    bFound = true;
-            }
-            free(casestr);
-        }
-        // Upper the first character and lower others.
-        if (!bFound) {
-            casestr = g_utf8_camelcase(sWord);
-            if (strcmp(casestr, sWord)) {
-                if (oLib[iLib]->Lookup(casestr, iIndex))
-                    bFound = true;
-            }
-            free(casestr);
+    }
+    // Upper the first character and lower others.
+    if (!bFound) {
+        utf8_camelcase(casestr);
+        if (strcmp(casestr, sWord)) {
+            if (oLib[iLib]->Lookup(casestr, iIndex))
+                bFound = true;
         }
     }
+    free(casestr);
 
     if (bIsPureEnglish(sWord)) {
         // If not Found , try other status of sWord.
@@ -1516,7 +1505,7 @@ bool Libs::SimpleLookupWord(const char *sWord, int64_t &iWordIndex, int iLib)
 {
     bool bFound = oLib[iLib]->Lookup(sWord, iWordIndex);
 
-    if (!bFound && fuzzy_)
+    if (!bFound && !param_.no_fuzzy)
         bFound = LookupSimilarWord(sWord, iWordIndex, iLib);
     return bFound;
 }
@@ -1746,6 +1735,44 @@ bool Libs::LookupData(const char *sWord, std::vector<char *> *reslist)
 }
 
 /**************************************************/
+std::map<std::string, std::string> load_from_ifo_file(const std::string &ifofilename, bool istreedict)
+{
+    std::map<std::string, std::string> result;
+    char *buffer = g_file_get_contents(ifofilename.c_str());
+    if (nullptr == buffer)
+        return result;
+
+    static const char TREEDICT_MAGIC_DATA[] = "StarDict's treedict ifo file";
+    static const char DICT_MAGIC_DATA[] = "StarDict's dict ifo file";
+
+    const char *magic_data = istreedict ? TREEDICT_MAGIC_DATA : DICT_MAGIC_DATA;
+    static const unsigned char utf8_bom[] = { 0xEF, 0xBB, 0xBF, '\0' };
+    //if (!g_str_has_prefix(
+    //        g_str_has_prefix((buffer), (const char *)(utf8_bom)) ? (buffer) + 3 : (buffer),
+    //        magic_data)) {
+    const char *checker = buffer;
+    if (!strncmp((const char*)utf8_bom, checker, 3))
+        checker += 3;
+    if (strncmp(magic_data, checker, strlen(magic_data))) {
+        return result;
+    }
+
+    char *p = buffer + strlen(magic_data) - 1;
+    while (true) {
+        char *t = strsep(&p, "\n");
+        if (!t)
+            break;
+        char *eq = strchr(t, '=');
+        if (eq) {
+            *eq = '\0';
+            eq++;
+            result[t] = eq;
+        }
+    }
+    free(buffer);
+    result["ifo_file_name"] = ifofilename;
+    return result;
+}
 query_t analyze_query(const char *s, std::string &res)
 {
     if (!s || !*s) {

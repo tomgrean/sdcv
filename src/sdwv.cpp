@@ -57,7 +57,7 @@ static bool stdio_getline(FILE *in, std::string &str)
 static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json);
 
 int main(int argc, char *argv[]) try {
-	Param_config param;
+    Param_config param;
 
     if (argc > 1) {
         int c, arg;
@@ -87,51 +87,51 @@ int main(int argc, char *argv[]) try {
 
             switch (c) {
             case 'h':
-            	param.show_v1_h2 = 2;
+                param.show_v1_h2 = 2;
                 break;
             case 'v':
-            	param.show_v1_h2 = 1;
+                param.show_v1_h2 = 1;
                 break;
             case 'l':
-            	param.show_list_dicts = true;
+                param.show_list_dicts = true;
                 break;
             case 'u':
                 arg = 1;
                 if (optarg)
-                	param.use_dict_list = optarg;
+                    param.use_dict_list = optarg;
                 else
                     printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'j':
-            	param.json_output = true;
+                param.json_output = true;
                 break;
             case 'e':
-            	param.no_fuzzy = true;
+                param.no_fuzzy = true;
                 break;
             case '2':
                 arg = 1;
                 if (optarg)
-                	param.opt_data_dir = optarg;
+                    param.opt_data_dir = optarg;
                 else
                     printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'x':
-            	param.only_data_dir = true;
+                param.only_data_dir = true;
                 break;
             case 'c':
-            	param.colorize = true;
+                param.colorize = true;
                 break;
             case 'p':
                 arg = 1;
                 if (optarg)
-                	param.listen_port = (int)strtol(optarg, NULL, 10);
+                    param.listen_port = (int)strtol(optarg, NULL, 10);
                 else {
                     printf("no port, use default 8888\n");
                     param.listen_port = 8888;
                 }
                 break;
             case 'd':
-            	param.daemonize = true;
+                param.daemonize = true;
                 break;
             case '?':
                 break;
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) try {
             param.colorize = true;
         }
     } else {
-    	param.show_v1_h2 = 2;
+        param.show_v1_h2 = 2;
     }
     if (param.show_v1_h2 == 1) {
         printf("Web version of Stardict, version %s\n", gVersion);
@@ -197,8 +197,8 @@ int main(int argc, char *argv[]) try {
     }
 
     if (param.daemonize) {
-    	param.show_v1_h2 = open("/dev/null", O_RDWR);
-    	dup2(param.show_v1_h2, 0);
+        param.show_v1_h2 = open("/dev/null", O_RDWR);
+        dup2(param.show_v1_h2, 0);
         dup2(param.show_v1_h2, 1);
         dup2(param.show_v1_h2, 2);
         close(param.show_v1_h2);
@@ -225,11 +225,10 @@ int main(int argc, char *argv[]) try {
     std::map<std::string, std::string> bookname_to_ifo;
     for_each_file(dicts_dir_list, ".ifo", order_list, disable_list,
                   [&bookname_to_ifo](const std::string &fname, bool) {
-                      DictInfo dict_info;
-                      const bool load_ok = dict_info.load_from_ifo_file(fname, false);
-                      if (!load_ok)
+                      const auto &&ifo = load_from_ifo_file(fname, false);
+                      if (ifo.size() < 1)
                           return;
-                      bookname_to_ifo[dict_info.bookname] = dict_info.ifo_file_name;
+                      bookname_to_ifo[ifo.at("bookname")] = ifo.at("ifo_file_name");
                   });
 
     if (param.use_dict_list) {
@@ -304,18 +303,18 @@ static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_js
     std::list<std::string> order_list, disable_list;
     for_each_file(dicts_dir_list, ".ifo", order_list,
                   disable_list, [use_json, &first_entry](const std::string &filename, bool) -> void {
-                      DictInfo dict_info;
-                      if (dict_info.load_from_ifo_file(filename, false)) {
-                          const std::string &bookname = dict_info.bookname;
+                      const auto &&ifo = load_from_ifo_file(filename, false);
+                      if (ifo.size() > 1) {
+                          const std::string &bookname = ifo.at("bookname");
                           if (use_json) {
                               if (first_entry) {
                                   first_entry = false;
                               } else {
                                   putchar(','); // comma between entries
                               }
-                              printf("{\"name\": \"%s\", \"wordcount\": \"%d\"}", json_escape_string(bookname).c_str(), dict_info.wordcount);
+                              printf("{\"name\": \"%s\", \"wordcount\": \"%s\"}", json_escape_string(bookname).c_str(), ifo.at("wordcount").c_str());
                           } else {
-                              printf("%s    %d\n", bookname.c_str(), dict_info.wordcount);
+                              printf("%s    %s\n", bookname.c_str(), ifo.at("wordcount").c_str());
                           }
                       }
                   });

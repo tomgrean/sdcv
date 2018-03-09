@@ -38,16 +38,13 @@ class Library : public Libs
 public:
     static std::map<std::string, std::string> *pbookname_to_ifo;
     Library(const Param_config &param)
-        : param_(param)
+        : Libs(param)
     {
-        setVerbose(!param_.json_output);
-        setFuzzy(!param_.no_fuzzy);
     }
 
     const std::string process_phrase(const char *loc_str, bool buffer_out);
 
 private:
-    const Param_config &param_;
     class response_out final
     {
     public:

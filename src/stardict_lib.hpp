@@ -11,6 +11,7 @@
 #include <regex>
 
 #include "dictziplib.hpp"
+#include "utils.hpp"
 
 const int MAX_MATCH_ITEM_PER_LIB = 100;
 const int MAX_FUZZY_DISTANCE = 3; // at most MAX_FUZZY_DISTANCE-1 differences allowed when find similar words
@@ -42,11 +43,6 @@ class DictBase
 {
 public:
     DictBase() {}
-    ~DictBase()
-    {
-        if (dictfile)
-            fclose(dictfile);
-    }
     DictBase(const DictBase &) = delete;
     DictBase &operator=(const DictBase &) = delete;
     char *GetWordData(uint32_t idxitem_offset, uint32_t idxitem_size);
@@ -59,6 +55,11 @@ public:
     bool SearchData(std::vector<std::string> &SearchWords, uint32_t idxitem_offset, uint32_t idxitem_size, char *origin_data);
 
 protected:
+    ~DictBase()
+    {
+        if (dictfile)
+            fclose(dictfile);
+    }
     std::string sametypesequence;
     FILE *dictfile = nullptr;
     std::unique_ptr<DictData> dictdzfile;
@@ -69,22 +70,22 @@ private:
 };
 
 //this structure contain all information about dictionary
-struct DictInfo {
-    std::string ifo_file_name;
-    uint32_t wordcount;
-    uint32_t syn_wordcount;
-    std::string bookname;
-    std::string author;
-    std::string email;
-    std::string website;
-    std::string date;
-    std::string description;
-    uint32_t index_file_size;
-    uint32_t syn_file_size;
-    std::string sametypesequence;
-
-    bool load_from_ifo_file(const std::string &ifofilename, bool istreedict);
-};
+//struct DictInfo {
+//    std::string ifo_file_name;
+//    uint32_t wordcount;
+//    uint32_t syn_wordcount;
+//    std::string bookname;
+//    std::string author;
+//    std::string email;
+//    std::string website;
+//    std::string date;
+//    std::string description;
+//    uint32_t index_file_size;
+//    uint32_t syn_file_size;
+//    std::string sametypesequence;
+//
+//    bool load_from_ifo_file(const std::string &ifofilename, bool istreedict);
+//};
 
 class IIndexFile
 {
@@ -152,14 +153,12 @@ private:
 class Libs
 {
 public:
-    Libs(std::function<void(void)> f = std::function<void(void)>())
+    Libs(const Param_config &param, std::function<void(void)> f = std::function<void(void)>())
+        : param_(param)
+        , progress_func(f)
     {
-        progress_func = f;
         iMaxFuzzyDistance = MAX_FUZZY_DISTANCE; //need to read from cfg.
     }
-    void setVerbose(bool verbose) { verbose_ = verbose; }
-    void setFuzzy(bool fuzzy) { fuzzy_ = fuzzy; }
-    ~Libs();
     Libs(const Libs &) = delete;
     Libs &operator=(const Libs &) = delete;
 
@@ -196,13 +195,13 @@ public:
     bool LookupData(const char *sWord, std::vector<char *> *reslist);
 
 protected:
-    bool fuzzy_;
+    ~Libs();
+    const Param_config &param_;
 
 private:
     std::vector<Dict *> oLib; // word Libs.
     int iMaxFuzzyDistance;
     std::function<void(void)> progress_func;
-    bool verbose_;
 };
 
 enum query_t {
@@ -212,4 +211,5 @@ enum query_t {
     qtDATA
 };
 
+extern std::map<std::string, std::string> load_from_ifo_file(const std::string &ifofilename, bool istreedict);
 extern query_t analyze_query(const char *s, std::string &res);
