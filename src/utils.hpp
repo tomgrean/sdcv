@@ -15,64 +15,18 @@
 #endif
 #endif
 
-#if abcdef
-template <typename T, typename unref_res_t, void (*unref_res)(unref_res_t *)>
-class ResourceWrapper
-{
-public:
-    ResourceWrapper(T *p = nullptr)
-        : p_(p)
-    {
-    }
-    ~ResourceWrapper() { free_resource(); }
-    ResourceWrapper(const ResourceWrapper &) = delete;
-    ResourceWrapper &operator=(const ResourceWrapper &) = delete;
-    T *operator->() const { return p_; }
-    bool operator!() const { return p_ == nullptr; }
-    const T &operator[](size_t idx) const
-    {
-        assert(p_ != nullptr);
-        return p_[idx];
-    }
-
-    void reset(T *newp)
-    {
-        if (p_ != newp) {
-            free_resource();
-            p_ = newp;
-        }
-    }
-
-    friend inline bool operator==(const ResourceWrapper &lhs, std::nullptr_t) noexcept
-    {
-        return !lhs.p_;
-    }
-
-    friend inline bool operator!=(const ResourceWrapper &lhs, std::nullptr_t) noexcept
-    {
-        return !!lhs.p_;
-    }
-
-    friend inline T *get_impl(const ResourceWrapper &rw)
-    {
-        return rw.p_;
-    }
-
-    friend inline T **get_addr(ResourceWrapper &rw)
-    {
-        return &rw.p_;
-    }
-
-private:
-    T *p_;
-
-    void free_resource()
-    {
-        if (p_)
-            unref_res(p_);
-    }
+struct Param_config {
+    int show_v1_h2 = 0;
+    bool show_list_dicts = false;
+    const char *use_dict_list = nullptr;
+    bool json_output = false;
+    bool no_fuzzy = false;
+    const char *opt_data_dir = nullptr;
+    bool only_data_dir = false;
+    bool colorize = false;
+    bool daemonize = false;
+    int listen_port = -1;
 };
-#endif
 
 extern void for_each_file(const std::list<std::string> &dirs_list, const std::string &suff,
                           const std::list<std::string> &order_list, const std::list<std::string> &disable_list,

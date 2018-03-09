@@ -57,16 +57,7 @@ static bool stdio_getline(FILE *in, std::string &str)
 static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json);
 
 int main(int argc, char *argv[]) try {
-    int show_v1_h2 = 0;
-    bool show_list_dicts = false;
-    const char *use_dict_list = nullptr;
-    bool json_output = false;
-    bool no_fuzzy = false;
-    const char *opt_data_dir = nullptr;
-    bool only_data_dir = false;
-    bool colorize = false;
-    bool daemonize = false;
-    int listen_port = -1;
+	Param_config param;
 
     if (argc > 1) {
         int c, arg;
@@ -96,51 +87,51 @@ int main(int argc, char *argv[]) try {
 
             switch (c) {
             case 'h':
-                show_v1_h2 = 2;
+            	param.show_v1_h2 = 2;
                 break;
             case 'v':
-                show_v1_h2 = 1;
+            	param.show_v1_h2 = 1;
                 break;
             case 'l':
-                show_list_dicts = true;
+            	param.show_list_dicts = true;
                 break;
             case 'u':
                 arg = 1;
                 if (optarg)
-                    use_dict_list = optarg;
+                	param.use_dict_list = optarg;
                 else
                     printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'j':
-                json_output = true;
+            	param.json_output = true;
                 break;
             case 'e':
-                no_fuzzy = true;
+            	param.no_fuzzy = true;
                 break;
             case '2':
                 arg = 1;
                 if (optarg)
-                    opt_data_dir = optarg;
+                	param.opt_data_dir = optarg;
                 else
                     printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'x':
-                only_data_dir = true;
+            	param.only_data_dir = true;
                 break;
             case 'c':
-                colorize = true;
+            	param.colorize = true;
                 break;
             case 'p':
                 arg = 1;
                 if (optarg)
-                    listen_port = (int)strtol(optarg, NULL, 10);
+                	param.listen_port = (int)strtol(optarg, NULL, 10);
                 else {
                     printf("no port, use default 8888\n");
-                    listen_port = 8888;
+                    param.listen_port = 8888;
                 }
                 break;
             case 'd':
-                daemonize = true;
+            	param.daemonize = true;
                 break;
             case '?':
                 break;
@@ -154,17 +145,17 @@ int main(int argc, char *argv[]) try {
             optind++;
         }
 
-        if (listen_port > 0 && !colorize) {
+        if (param.listen_port > 0 && !param.colorize) {
             printf("-p implies -c.\n");
-            colorize = true;
+            param.colorize = true;
         }
     } else {
-        show_v1_h2 = 2;
+    	param.show_v1_h2 = 2;
     }
-    if (show_v1_h2 == 1) {
+    if (param.show_v1_h2 == 1) {
         printf("Web version of Stardict, version %s\n", gVersion);
         return EXIT_SUCCESS;
-    } else if (show_v1_h2 == 2) {
+    } else if (param.show_v1_h2 == 2) {
         puts(
                 "Usage:\n"
                 "  sdwv [OPTION...]  words\n"
@@ -191,10 +182,10 @@ int main(int argc, char *argv[]) try {
 
     const char *stardict_data_dir = getenv("STARDICT_DATA_DIR");
     std::string data_dir;
-    if (opt_data_dir) {
-        data_dir = opt_data_dir;
+    if (param.opt_data_dir) {
+        data_dir = param.opt_data_dir;
     } else {
-        if (!only_data_dir) {
+        if (!param.only_data_dir) {
             if (stardict_data_dir) {
                 data_dir = stardict_data_dir;
             } else {
@@ -205,14 +196,14 @@ int main(int argc, char *argv[]) try {
         }
     }
 
-    if (daemonize) {
-        show_v1_h2 = open("/dev/null", O_RDWR);
-        dup2(show_v1_h2, 0);
-        dup2(show_v1_h2, 1);
-        dup2(show_v1_h2, 2);
-        close(show_v1_h2);
-        show_v1_h2 = fork();
-        if (show_v1_h2) {
+    if (param.daemonize) {
+    	param.show_v1_h2 = open("/dev/null", O_RDWR);
+    	dup2(param.show_v1_h2, 0);
+        dup2(param.show_v1_h2, 1);
+        dup2(param.show_v1_h2, 2);
+        close(param.show_v1_h2);
+        param.show_v1_h2 = fork();
+        if (param.show_v1_h2) {
             return EXIT_SUCCESS;
         }
     }
@@ -221,11 +212,11 @@ int main(int argc, char *argv[]) try {
         homedir = "/tmp/";
 
     std::list<std::string> dicts_dir_list;
-    if (!only_data_dir)
+    if (!param.only_data_dir)
         dicts_dir_list.push_back(std::string(homedir) + G_DIR_SEPARATOR + ".stardict" + G_DIR_SEPARATOR + "dic");
     dicts_dir_list.push_back(data_dir);
-    if (show_list_dicts) {
-        list_dicts(dicts_dir_list, json_output);
+    if (param.show_list_dicts) {
+        list_dicts(dicts_dir_list, param.json_output);
         return EXIT_SUCCESS;
     }
 
@@ -241,8 +232,8 @@ int main(int argc, char *argv[]) try {
                       bookname_to_ifo[dict_info.bookname] = dict_info.ifo_file_name;
                   });
 
-    if (use_dict_list) {
-        char *dict_list_str = strdup(use_dict_list);
+    if (param.use_dict_list) {
+        char *dict_list_str = strdup(param.use_dict_list);
         char *p = dict_list_str;
         while (true) {
             char *t = strsep(&p, ";\n");
@@ -277,10 +268,10 @@ int main(int argc, char *argv[]) try {
     }
 
     Library::pbookname_to_ifo = &bookname_to_ifo;
-    Library lib(colorize, json_output, no_fuzzy);
+    Library lib(param);
     lib.load(dicts_dir_list, order_list, disable_list);
 
-    if (listen_port > 0) {
+    if (param.listen_port > 0) {
         httplib::Server serv;
         serv.set_base_dir(data_dir.c_str());
         serv.get("/", [&](const httplib::Request &req, httplib::Response &res) {
@@ -288,7 +279,7 @@ int main(int argc, char *argv[]) try {
             res.set_content(result, "text/html");
         });
         //serv.get("/.*/res/.*", Ser);
-        serv.listen("0.0.0.0", (int)listen_port);
+        serv.listen("0.0.0.0", (int)param.listen_port);
     } else if (optind < argc) {
         for (int i = optind; i < argc; ++i)
             if (lib.process_phrase(argv[i], false).length() <= 0) {

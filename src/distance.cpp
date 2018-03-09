@@ -32,7 +32,6 @@ The Levenshtein distance algorithm has been used in:
     * DNA analysis
     * Plagiarism detection 
 */
-#if 1
 #include <cstdlib>
 #include <cstring>
 
@@ -143,4 +142,3 @@ int EditDistance/*<TC>*/::CalEditDistance(const TC *s, const TC *t, const int li
     // d(n-1,m-1)
     return d[n * m - 1];
 }
-#endif

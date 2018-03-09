@@ -326,7 +326,7 @@ void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
             res_list.push_back(
                 TSearchResult(dict_name(idict),
                               poGetWord(ind, idict),
-                              parse_data(dict_name(idict), poGetWordData(ind, idict), colorize_output_)));
+                              parse_data(dict_name(idict), poGetWordData(ind, idict), param_.colorize)));
 }
 
 void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_list)
@@ -367,16 +367,16 @@ void Library::LookupData(const std::string &str, TSearchResultList &res_list)
         }
 }
 
-Library::response_out::response_out(const char *str, Library *lib, bool bufferout) : lib_(lib), bufferout_(bufferout)
+Library::response_out::response_out(const char *str, const Param_config &param, bool bufferout) : param_(param), bufferout_(bufferout)
 {
-    if (lib->json_) {
+    if (param_.json_output) {
         if (bufferout_)
             buffer = "[";
         else
             putchar('[');
         return;
     }
-    if (lib_->colorize_output_) {
+    if (param_.colorize) {
         std::string headerhtml1 = "<html><head>"
                 "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"
                 "<title>Star Dictionary</title>"
@@ -421,9 +421,9 @@ Library::response_out::response_out(const char *str, Library *lib, bool bufferou
 }
 Library::response_out::~response_out()
 {
-    if (lib_->json_) {
+    if (param_.json_output) {
         putchar(']');
-    } else if (lib_->colorize_output_) {
+    } else if (param_.colorize) {
         printf("</body></html>");
     }
 }
@@ -442,9 +442,9 @@ std::string Library::response_out::get_content() {
     }
     content = buffer;
     buffer = std::string();
-    if (lib_->json_) {
+    if (param_.json_output) {
         content += ']';
-    } else if (lib_->colorize_output_) {
+    } else if (param_.colorize) {
         content += "</body></html>";
     }
     return content;
@@ -454,21 +454,19 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
 {
     bool first_result = true;
     response_out &out = *this;
-    if (!lib_->json_ && lib_->colorize_output_)
+    if (!param_.json_output && param_.colorize) {
         out << "<ol>";
-    for (TSearchResult &res : res_list) {
-        if (!lib_->json_ && lib_->colorize_output_) {
-            // put list-of-contents
-            out << "<li><a href='#" << res.idname << "'>"
-                << res.def << " : " << res.bookname
-                << "</a></li>\n";
-        }
-    }
-    if (!lib_->json_ && lib_->colorize_output_)
+        for (TSearchResult &res : res_list) {
+			// put list-of-contents
+			out << "<li><a href='#" << res.idname << "'>"
+				<< res.def << " : " << res.bookname
+				<< "</a></li>\n";
+		}
         out << "</ol>";
+    }
 
     for (const TSearchResult &res : res_list) {
-        if (lib_->json_) {
+        if (param_.json_output) {
             if (!first_result) {
                 out << ",";
             } else {
@@ -480,7 +478,7 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
                     << "\"}";
 
         } else {
-            if (lib_->colorize_output_) {//HTML <DIV> output
+            if (param_.colorize) {//HTML <DIV> output
                 out << "<div id='"<< res.idname << "' class='res_word'>"
                     << res.bookname << " ("<< res.def
                     << ")</div><div class='res_definition'>"
@@ -496,7 +494,7 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
 
 const std::string Library::process_phrase(const char *str, bool buffer_out)
 {
-    response_out outputer(str, this, buffer_out);
+    response_out outputer(str, param_, buffer_out);
     if (nullptr == str || '\0' == str[0])
         return outputer.get_content();
 
@@ -543,7 +541,7 @@ const std::string Library::process_phrase(const char *str, bool buffer_out)
     if (!res_list.empty()) {
         outputer.print_search_result(res_list);
     } else {
-        if (!json_) {
+        if (!param_.json_output) {
             outputer << ("Nothing similar to ") << (str);
         }
     }

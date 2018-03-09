@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "stardict_lib.hpp"
+#include "utils.hpp"
 
 //this structure is wrapper and it need for unification
 //results of search whith return Dicts class
@@ -36,23 +37,21 @@ class Library : public Libs
 {
 public:
     static std::map<std::string, std::string> *pbookname_to_ifo;
-    Library(bool colorize_output, bool use_json, bool no_fuzzy)
-        : colorize_output_(colorize_output)
-        , json_(use_json)
+    Library(const Param_config &param)
+        : param_(param)
     {
-        setVerbose(!use_json);
-        setFuzzy(!no_fuzzy);
+        setVerbose(!param_.json_output);
+        setFuzzy(!param_.no_fuzzy);
     }
 
     const std::string process_phrase(const char *loc_str, bool buffer_out);
 
 private:
-    const bool colorize_output_;
-    const bool json_;
+    const Param_config &param_;
     class response_out final
     {
     public:
-        explicit response_out(const char *str, Library *lib, bool bufferout);
+        explicit response_out(const char *str, const Param_config &param, bool bufferout);
         response_out(const response_out &) = delete;
         response_out &operator=(const response_out &) = delete;
         ~response_out();
@@ -60,7 +59,7 @@ private:
         std::string get_content();
         void print_search_result(TSearchResultList &res_list);
     private:
-        Library *lib_;
+        const Param_config &param_;
         bool bufferout_;
         std::string buffer;
     };

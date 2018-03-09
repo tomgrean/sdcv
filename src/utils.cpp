@@ -96,7 +96,7 @@ std::string json_escape_string(const std::string &s)
             o << "\\t";
             break;
         default:
-            if ('\x00' <= *c && *c <= '\x1f') {
+            if (static_cast<unsigned int>(*c) <= 0x1f) {
                 o << "\\u"
                   << std::hex << std::setw(4) << std::setfill('0') << (int)*c;
             } else {
