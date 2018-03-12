@@ -317,6 +317,20 @@ static std::string parse_data(const std::string &dictname, const char *data, boo
     return res;
 }
 
+TSearchResult::TSearchResult(const std::string &bookname_, const std::string &def_, const std::string &&exp_)
+        : bookname(bookname_)
+        , def(def_)
+        , exp(exp_)
+        , idname(bookname_ + ".." + def_)
+{
+    std::string::size_type index;
+    for (const char ch : {'\'', '\"', ' ', '\t'}) {
+        while ((index = idname.find(ch)) != std::string::npos) {
+            idname.replace(index, 1, 1, '_');
+        }
+    }
+}
+
 void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
 {
     int64_t ind;

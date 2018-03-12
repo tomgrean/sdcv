@@ -69,24 +69,6 @@ private:
     int cache_cur = 0;
 };
 
-//this structure contain all information about dictionary
-//struct DictInfo {
-//    std::string ifo_file_name;
-//    uint32_t wordcount;
-//    uint32_t syn_wordcount;
-//    std::string bookname;
-//    std::string author;
-//    std::string email;
-//    std::string website;
-//    std::string date;
-//    std::string description;
-//    uint32_t index_file_size;
-//    uint32_t syn_file_size;
-//    std::string sametypesequence;
-//
-//    bool load_from_ifo_file(const std::string &ifofilename, bool istreedict);
-//};
-
 class IIndexFile
 {
 public:

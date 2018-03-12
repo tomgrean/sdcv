@@ -57,11 +57,11 @@ inline bool MapFile::open(const char *file_name, unsigned long file_size)
     data = (char *)MapViewOfFile(hFileMap, FILE_MAP_READ, 0, 0, file_size);
 #else
     size_t read_len;
-    if (!g_file_get_contents(file_name, &data, &read_len, nullptr))
+    if (!(data = g_file_get_contents(file_name)))
         return false;
 
-    if (read_len != file_size)
-        return false;
+//    if (read_len != file_size)
+//        return false;
 #endif
 
     return true;

@@ -85,9 +85,9 @@ inline static const char *g_utf8_casefold(const char *p)
 }
 static char *g_file_get_contents(const char *filename)
 {
-    struct stat stt;
     FILE *f;
-    char *ppp;
+    char *content;
+    struct stat stt;
     int res;
 
     res = stat(filename, &stt);
@@ -98,14 +98,19 @@ static char *g_file_get_contents(const char *filename)
     if (f == nullptr) {
         return nullptr;
     }
-    ppp = (char*)malloc(stt.st_size);
-    if (ppp == nullptr) {
+    content = (char*)malloc(stt.st_size);
+    if (content == nullptr) {
         fclose(f);
         return nullptr;
     }
-    fread(ppp, 1, stt.st_size, f);
+
+    res = fread(content, 1, stt.st_size, f);
     fclose(f);
-    return ppp;
+    if (res != (int)stt.st_size) {
+        free(content);
+        return nullptr;
+    }
+    return content;
 }
 inline static char *g_utf8_strdown(const char *p)
 {
@@ -149,122 +154,6 @@ inline static void utf8_camelcase(char *p)
     }
 }
 }
-
-//bool DictInfo::load_from_ifo_file(const std::string &ifofilename,
-//                                  bool istreedict)
-//{
-//    ifo_file_name = ifofilename;
-//    //char *buffer;
-//    bool result;
-//    const std::string buffer(g_file_get_contents(ifofilename.c_str(), result));
-//    if (!result)
-//        return false;
-//
-//    static const char TREEDICT_MAGIC_DATA[] = "StarDict's treedict ifo file";
-//    static const char DICT_MAGIC_DATA[] = "StarDict's dict ifo file";
-//
-//    const char *magic_data = istreedict ? TREEDICT_MAGIC_DATA : DICT_MAGIC_DATA;
-//    static const unsigned char utf8_bom[] = { 0xEF, 0xBB, 0xBF, '\0' };
-//    //if (!g_str_has_prefix(
-//    //        g_str_has_prefix((buffer), (const char *)(utf8_bom)) ? (buffer) + 3 : (buffer),
-//    //        magic_data)) {
-//    const char *checker = buffer.c_str();
-//    if (!strncmp((const char*)utf8_bom, checker, 3))
-//        checker += 3;
-//    if (strncmp(magic_data, checker, strlen(magic_data))) {
-//        return false;
-//    }
-//
-//    const char *p1 = (buffer.c_str()) + strlen(magic_data) - 1;
-//
-//    const char *p2 = strstr(p1, "\nwordcount=");
-//    if (p2 == nullptr)
-//        return false;
-//
-//    const char *p3 = strchr(p2 + sizeof("\nwordcount=") - 1, '\n');
-//
-//    wordcount = atol(std::string(p2 + sizeof("\nwordcount=") - 1, p3 - (p2 + sizeof("\nwordcount=") - 1)).c_str());
-//
-//    if (istreedict) {
-//        p2 = strstr(p1, "\ntdxfilesize=");
-//        if (p2 == nullptr)
-//            return false;
-//
-//        p3 = strchr(p2 + sizeof("\ntdxfilesize=") - 1, '\n');
-//
-//        index_file_size = atol(std::string(p2 + sizeof("\ntdxfilesize=") - 1, p3 - (p2 + sizeof("\ntdxfilesize=") - 1)).c_str());
-//
-//    } else {
-//
-//        p2 = strstr(p1, "\nidxfilesize=");
-//        if (p2 == nullptr)
-//            return false;
-//
-//        p3 = strchr(p2 + sizeof("\nidxfilesize=") - 1, '\n');
-//        index_file_size = atol(std::string(p2 + sizeof("\nidxfilesize=") - 1, p3 - (p2 + sizeof("\nidxfilesize=") - 1)).c_str());
-//    }
-//
-//    p2 = strstr(p1, "\nbookname=");
-//
-//    if (p2 == nullptr)
-//        return false;
-//
-//    p2 = p2 + sizeof("\nbookname=") - 1;
-//    p3 = strchr(p2, '\n');
-//    bookname.assign(p2, p3 - p2);
-//
-//    p2 = strstr(p1, "\nauthor=");
-//    if (p2) {
-//        p2 = p2 + sizeof("\nauthor=") - 1;
-//        p3 = strchr(p2, '\n');
-//        author.assign(p2, p3 - p2);
-//    }
-//
-//    p2 = strstr(p1, "\nemail=");
-//    if (p2) {
-//        p2 = p2 + sizeof("\nemail=") - 1;
-//        p3 = strchr(p2, '\n');
-//        email.assign(p2, p3 - p2);
-//    }
-//
-//    p2 = strstr(p1, "\nwebsite=");
-//    if (p2) {
-//        p2 = p2 + sizeof("\nwebsite=") - 1;
-//        p3 = strchr(p2, '\n');
-//        website.assign(p2, p3 - p2);
-//    }
-//
-//    p2 = strstr(p1, "\ndate=");
-//    if (p2) {
-//        p2 = p2 + sizeof("\ndate=") - 1;
-//        p3 = strchr(p2, '\n');
-//        date.assign(p2, p3 - p2);
-//    }
-//
-//    p2 = strstr(p1, "\ndescription=");
-//    if (p2) {
-//        p2 = p2 + sizeof("\ndescription=") - 1;
-//        p3 = strchr(p2, '\n');
-//        description.assign(p2, p3 - p2);
-//    }
-//
-//    p2 = strstr(p1, "\nsametypesequence=");
-//    if (p2) {
-//        p2 += sizeof("\nsametypesequence=") - 1;
-//        p3 = strchr(p2, '\n');
-//        sametypesequence.assign(p2, p3 - p2);
-//    }
-//
-//    p2 = strstr(p1, "\nsynwordcount=");
-//    syn_wordcount = 0;
-//    if (p2) {
-//        p2 += sizeof("\nsynwordcount=") - 1;
-//        p3 = strchr(p2, '\n');
-//        syn_wordcount = atol(std::string(p2, p3 - p2).c_str());
-//    }
-//
-//    return true;
-//}
 
 char *DictBase::GetWordData(uint32_t idxitem_offset, uint32_t idxitem_size)
 {
@@ -963,7 +852,7 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
         return false;
 
     std::string fullfilename(ifofilename);
-    fullfilename.replace(fullfilename.length() - sizeof("ifo") + 1, sizeof("ifo") - 1, "dict.dz");
+    fullfilename.replace(fullfilename.length() - (sizeof("ifo") - 1), sizeof("ifo") - 1, "dict.dz");
 
     if (!access(fullfilename.c_str(), R_OK)) {
         dictdzfile.reset(new DictData);
@@ -972,7 +861,7 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
             return false;
         }
     } else {
-        fullfilename.erase(fullfilename.length() - sizeof(".dz") + 1, sizeof(".dz") - 1);
+        fullfilename.erase(fullfilename.length() - (sizeof(".dz") - 1), sizeof(".dz") - 1);
         dictfile = fopen(fullfilename.c_str(), "rb");
         if (!dictfile) {
             //g_print("open file %s failed!\n",fullfilename);
@@ -981,12 +870,12 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
     }
 
     fullfilename = ifofilename;
-    fullfilename.replace(fullfilename.length() - sizeof("ifo") + 1, sizeof("ifo") - 1, "idx.gz");
+    fullfilename.replace(fullfilename.length() - (sizeof("ifo") - 1), sizeof("ifo") - 1, "idx.gz");
 
     if (!access(fullfilename.c_str(), R_OK)) {
         idx_file.reset(new WordListIndex);
     } else {
-        fullfilename.erase(fullfilename.length() - sizeof(".gz") + 1, sizeof(".gz") - 1);
+        fullfilename.erase(fullfilename.length() - (sizeof(".gz") - 1), sizeof(".gz") - 1);
         idx_file.reset(new OffsetIndex);
     }
 
@@ -994,7 +883,7 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
         return false;
 
     fullfilename = ifofilename;
-    fullfilename.replace(fullfilename.length() - sizeof("ifo") + 1, sizeof("ifo") - 1, "syn");
+    fullfilename.replace(fullfilename.length() - (sizeof("ifo") - 1), sizeof("ifo") - 1, "syn");
     syn_file.reset(new SynFile);
     syn_file->load(fullfilename, syn_wordcount);
 

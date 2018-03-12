@@ -14,19 +14,7 @@ struct TSearchResult {
     std::string exp;
     std::string idname;//TODO unique id.
 
-    TSearchResult(const std::string &bookname_, const std::string &def_, const std::string &exp_)
-        : bookname(bookname_)
-        , def(def_)
-        , exp(exp_)
-    {
-        idname = bookname + ".." + def;
-        std::string::size_type index;
-        for (const char ch : {'\'', '\"', ' ', '\t'}) {
-            while ((index = idname.find(ch)) != std::string::npos) {
-                idname.replace(index, 1, 1, '_');
-            }
-        }
-    }
+    TSearchResult(const std::string &bookname_, const std::string &def_, const std::string &&exp_);
 };
 
 typedef std::vector<TSearchResult> TSearchResultList;
