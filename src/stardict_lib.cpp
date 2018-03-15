@@ -57,6 +57,17 @@ static bool bIsPureEnglish(const char *str)
     return true;
 }
 
+static const std::string &g_get_user_cache_dir()
+{
+    static std::string user_cache;
+    if (user_cache.length() <= 0) {
+    	if (getenv("HOME"))
+    		user_cache = std::string(getenv("HOME")) + ".cache";
+    	else
+    		user_cache = "/tmp/sdwv_cache";
+    }
+    return user_cache;
+}
 static inline int stardict_strcmp(const char *s1, const char *s2)
 {
     const int a = strcasecmp(s1, s2);
@@ -75,10 +86,6 @@ static void unicode_strdown(TC *str)
     }
 }
 #endif
-static const char *g_get_user_cache_dir()
-{
-    return ".cache";
-}
 inline static const char *g_utf8_casefold(const char *p)
 {
     return p;
@@ -563,10 +570,10 @@ bool OffsetIndex::load_cache(const std::string &url)
 std::list<std::string> OffsetIndex::get_cache_variant(const std::string &url)
 {
     std::list<std::string> res = { url + ".oft" };
-    if (access(g_get_user_cache_dir(), R_OK|W_OK|X_OK) && mkdir(g_get_user_cache_dir(), 0700) == -1)
+    if (access(g_get_user_cache_dir().c_str(), R_OK|W_OK|X_OK) && mkdir(g_get_user_cache_dir().c_str(), 0700) == -1)
         return res;
 
-    const std::string cache_dir = std::string(g_get_user_cache_dir()) + G_DIR_SEPARATOR + "sdwv";
+    const std::string cache_dir(g_get_user_cache_dir() + G_DIR_SEPARATOR + "sdwv");
 
     if (access(cache_dir.c_str(), R_OK|W_OK|X_OK)) {
         if (mkdir(cache_dir.c_str(), 0700) == -1)
