@@ -47,8 +47,6 @@ static const char *TRANSCRIPTION_VISFMT = ESC_BROWN;
 static const char *EXAMPLE_VISFMT = ESC_LIGHT_GRAY;
 static const char *ABR_VISFMT = ESC_GREEN;
 
-std::map<std::string, std::string> *Library::pbookname_to_ifo = nullptr;
-
 static std::string htmlredirect(const char *str, uint32_t &sec_size)
 {
     std::string res;
@@ -105,7 +103,7 @@ static std::string text2simplehtml(const char *str, uint32_t &sec_size)
     return res;
 }
 
-static std::string xdxf2text(const std::string &dictname, const char *xstr, bool colorize_output, uint32_t &sec_size)
+static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool colorize_output, uint32_t &sec_size)
 {
     std::string res;
     const char *p = xstr;
@@ -127,7 +125,7 @@ static std::string xdxf2text(const std::string &dictname, const char *xstr, bool
                 const char *end_p = strchr(p, '<');
                 if (end_p) {
                     const std::string targetRef(p, end_p - p);
-                    std::string file(Library::pbookname_to_ifo->at(dictname));
+                    std::string file(dictname->second);
                     std::string::size_type end = file.rfind(G_DIR_SEPARATOR);
                     if (end != std::string::npos) {
                         std::string::size_type begin = file.rfind(G_DIR_SEPARATOR, end - 1);
@@ -241,7 +239,7 @@ static std::string xdxf2text(const std::string &dictname, const char *xstr, bool
     return res;
 }
 
-static std::string parse_data(const std::string &dictname, const char *data, bool colorize_output)
+static std::string parse_data(const CBook_it &dictname, const char *data, bool colorize_output)
 {
     if (!data)
         return "";
@@ -317,11 +315,11 @@ static std::string parse_data(const std::string &dictname, const char *data, boo
     return res;
 }
 
-TSearchResult::TSearchResult(const std::string &bookname_, const std::string &def_, const std::string &&exp_)
-        : bookname(bookname_)
-        , def(def_)
-        , exp(exp_)
-        , idname(bookname_ + ".." + def_)
+TSearchResult::TSearchResult(const std::string &name, const std::string &w, const std::string &&def)
+        : bookname(name)
+        , word(w)
+        , definition(def)
+        , idname(name + ".." + w)
 {
     std::string::size_type index;
     for (const char ch : {'\'', '\"', ' ', '\t'}) {
@@ -340,7 +338,7 @@ void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
             res_list.push_back(
                 TSearchResult(dict_name(idict),
                               poGetWord(ind, idict),
-                              parse_data(dict_name(idict), poGetWordData(ind, idict), param_.colorize)));
+                              parse_data(bookname_to_ifo.find(dict_name(idict)), poGetWordData(ind, idict), param_.colorize)));
 }
 
 void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_list)
@@ -473,7 +471,7 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
         for (TSearchResult &res : res_list) {
             // put list-of-contents
             out << "<li><a href='#" << res.idname << "'>"
-                << res.def << " : " << res.bookname
+                << res.word << " : " << res.bookname
                 << "</a></li>\n";
         }
         out << "</ol>";
@@ -487,20 +485,20 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
                 first_result = false;
             }
             out << "{\"dict\": \"" << json_escape_string(res.bookname)
-                    << "\",\"word\":\"" << json_escape_string(res.def)
-                    << "\",\"definition\":\"" << json_escape_string(res.exp)
+                    << "\",\"word\":\"" << json_escape_string(res.word)
+                    << "\",\"definition\":\"" << json_escape_string(res.definition)
                     << "\"}";
 
         } else {
             if (param_.colorize) {//HTML <DIV> output
                 out << "<div id='"<< res.idname << "' class='res_word'>"
-                    << res.bookname << " ("<< res.def
+                    << res.bookname << " ("<< res.word
                     << ")</div><div class='res_definition'>"
-                    << res.exp << "</div>";
+                    << res.definition << "</div>";
             } else {
                 out << "-->" << res.bookname
-                    << "\n-->" << res.def
-                    << "\n"<< res.exp << "\n\n";
+                    << "\n-->" << res.word
+                    << "\n"<< res.definition << "\n\n";
             }
         }
     }

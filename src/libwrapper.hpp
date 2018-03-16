@@ -10,11 +10,11 @@
 //results of search whith return Dicts class
 struct TSearchResult {
     std::string bookname;
-    std::string def;
-    std::string exp;
+    std::string word;
+    std::string definition;
     std::string idname;//TODO unique id.
 
-    TSearchResult(const std::string &bookname_, const std::string &def_, const std::string &&exp_);
+    TSearchResult(const std::string &name, const std::string &w, const std::string &&def);
 };
 
 typedef std::vector<TSearchResult> TSearchResultList;
@@ -24,9 +24,8 @@ typedef std::vector<TSearchResult> TSearchResultList;
 class Library : public Libs
 {
 public:
-    static std::map<std::string, std::string> *pbookname_to_ifo;
-    Library(const Param_config &param)
-        : Libs(param)
+    Library(const Param_config &param, const std::map<std::string, std::string> & bookname2ifo)
+        : Libs(param), bookname_to_ifo(bookname2ifo)
     {
     }
 
@@ -48,9 +47,11 @@ private:
         bool bufferout_;
         std::string buffer;
     };
+    const std::map<std::string, std::string> bookname_to_ifo;
+
     void SimpleLookup(const std::string &str, TSearchResultList &res_list);
     void LookupWithFuzzy(const std::string &str, TSearchResultList &res_list);
     void LookupWithRule(const std::string &str, TSearchResultList &res_lsit);
     void LookupData(const std::string &str, TSearchResultList &res_list);
 };
-
+typedef std::map<std::string, std::string>::const_iterator CBook_it;

@@ -61,10 +61,10 @@ static const std::string &g_get_user_cache_dir()
 {
     static std::string user_cache;
     if (user_cache.length() <= 0) {
-    	if (getenv("HOME"))
-    		user_cache = std::string(getenv("HOME")) + ".cache";
-    	else
-    		user_cache = "/tmp/sdwv_cache";
+        if (getenv("HOME"))
+            user_cache = std::string(getenv("HOME")) + ".cache";
+        else
+            user_cache = "/tmp/sdwv_cache";
     }
     return user_cache;
 }
@@ -89,35 +89,6 @@ static void unicode_strdown(TC *str)
 inline static const char *g_utf8_casefold(const char *p)
 {
     return p;
-}
-static char *g_file_get_contents(const char *filename)
-{
-    FILE *f;
-    char *content;
-    struct stat stt;
-    int res;
-
-    res = stat(filename, &stt);
-    if (res) {
-        return nullptr;
-    }
-    f = fopen(filename, "rb");
-    if (f == nullptr) {
-        return nullptr;
-    }
-    content = (char*)malloc(stt.st_size);
-    if (content == nullptr) {
-        fclose(f);
-        return nullptr;
-    }
-
-    res = fread(content, 1, stt.st_size, f);
-    fclose(f);
-    if (res != (int)stt.st_size) {
-        free(content);
-        return nullptr;
-    }
-    return content;
 }
 inline static char *g_utf8_strdown(const char *p)
 {

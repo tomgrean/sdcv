@@ -22,12 +22,15 @@
 #include "config.h"
 #endif
 
-#include <algorithm>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <iomanip>
 #include <sstream>
-#include <dirent.h>
+#include <algorithm>
 
 #include "utils.hpp"
 
@@ -105,4 +108,34 @@ std::string json_escape_string(const std::string &s)
         }
     }
     return o.str();
+}
+
+char *g_file_get_contents(const char *filename)
+{
+    FILE *f;
+    char *content;
+    struct stat stt;
+    int res;
+
+    res = stat(filename, &stt);
+    if (res) {
+        return nullptr;
+    }
+    f = fopen(filename, "rb");
+    if (f == nullptr) {
+        return nullptr;
+    }
+    content = (char*)malloc(stt.st_size);
+    if (content == nullptr) {
+        fclose(f);
+        return nullptr;
+    }
+
+    res = fread(content, 1, stt.st_size, f);
+    fclose(f);
+    if (res != (int)stt.st_size) {
+        free(content);
+        return nullptr;
+    }
+    return content;
 }

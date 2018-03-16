@@ -40,21 +40,8 @@
 
 static const char gVersion[] = VERSION;
 
-namespace
-{
-static bool stdio_getline(FILE *in, std::string &str)
-{
-    assert(in != nullptr);
-    str.clear();
-    int ch;
-    while ((ch = fgetc(in)) != EOF && ch != '\n')
-        str += ch;
-
-    return EOF != ch;
-}
-}
-
 static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json);
+static std::unique_ptr<Library> prepare(Param_config &param);
 
 int main(int argc, char *argv[]) try {
     Param_config param;
@@ -180,22 +167,6 @@ int main(int argc, char *argv[]) try {
         return EXIT_SUCCESS;
     }
 
-    const char *stardict_data_dir = getenv("STARDICT_DATA_DIR");
-    std::string data_dir;
-    if (param.opt_data_dir) {
-        data_dir = param.opt_data_dir;
-    } else {
-        if (!param.only_data_dir) {
-            if (stardict_data_dir) {
-                data_dir = stardict_data_dir;
-            } else {
-//                data_dir = "/storage/sdcard1/download/dict";
-                data_dir = "/usr/share/stardict/dic";
-//                data_dir = "/mnt/code/dic";
-            }
-        }
-    }
-
     if (param.daemonize) {
         param.show_v1_h2 = open("/dev/null", O_RDWR);
         dup2(param.show_v1_h2, 0);
@@ -207,17 +178,62 @@ int main(int argc, char *argv[]) try {
             return EXIT_SUCCESS;
         }
     }
+
+    std::unique_ptr<Library>lib = prepare(param);
+    if (lib == nullptr) {
+        return EXIT_SUCCESS;
+    }
+
+    if (param.listen_port > 0) {
+        httplib::Server serv;
+        serv.set_base_dir(param.opt_data_dir);
+        serv.get("/", [&](const httplib::Request &req, httplib::Response &res) {
+            std::string result = lib->process_phrase(req.get_param_value("w").c_str(), true);
+            res.set_content(result, "text/html");
+        });
+        //serv.get("/.*/res/.*", Ser);
+        serv.listen("0.0.0.0", (int)param.listen_port);
+    } else if (optind < argc) {
+        for (int i = optind; i < argc; ++i)
+            if (lib->process_phrase(argv[i], false).length() <= 0) {
+                return 3;
+            }
+    } else {
+        printf("There is no word.\n");
+        return 4;
+    }
+    return EXIT_SUCCESS;
+} catch (const std::exception &ex) {
+    exit(120);
+}
+static std::unique_ptr<Library> prepare(Param_config &param)
+{
+    const char *stardict_data_dir = getenv("STARDICT_DATA_DIR");
+    const char *data_dir;
+    if (param.opt_data_dir) {
+        data_dir = param.opt_data_dir;
+    } else {
+        if (stardict_data_dir) {
+            data_dir = stardict_data_dir;
+        } else {
+//            data_dir = "/storage/sdcard1/download/dict";
+            data_dir = "/usr/share/stardict/dic";
+//            data_dir = "/mnt/code/dic";
+        }
+        param.opt_data_dir = data_dir;
+    }
+
     const char *homedir = getenv("HOME");
     if (!homedir)
         homedir = "/tmp/";
 
     std::list<std::string> dicts_dir_list;
     if (!param.only_data_dir)
-        dicts_dir_list.push_back(std::string(homedir) + G_DIR_SEPARATOR + ".stardict" + G_DIR_SEPARATOR + "dic");
-    dicts_dir_list.push_back(data_dir);
+        dicts_dir_list.push_back(std::string(homedir) + G_DIR_SEPARATOR ".stardict" G_DIR_SEPARATOR "dic");
+    dicts_dir_list.push_back(param.opt_data_dir);
     if (param.show_list_dicts) {
         list_dicts(dicts_dir_list, param.json_output);
-        return EXIT_SUCCESS;
+        return nullptr;
     }
 
     std::list<std::string> order_list;
@@ -251,48 +267,23 @@ int main(int argc, char *argv[]) try {
         }
     } else {
         const std::string odering_cfg_file = std::string(homedir) + G_DIR_SEPARATOR ".sdwv_ordering";
-        FILE *ordering_file = fopen(odering_cfg_file.c_str(), "r");
-        if (ordering_file != nullptr) {
-            std::string line;
-            while (stdio_getline(ordering_file, line)) {
-                order_list.push_back(bookname_to_ifo.at(line));
+        char *ordering_str = g_file_get_contents(odering_cfg_file.c_str());
+        if (ordering_str != nullptr) {
+            char *p = ordering_str;
+            while (true) {
+                char *t = strsep(&p, "\n");
+                if (!t)
+                    break;
+                order_list.push_back(bookname_to_ifo.at(t));
             }
-            fclose(ordering_file);
+            free(ordering_str);
         }
     }
 
-    const std::string conf_dir = std::string(homedir) + G_DIR_SEPARATOR + ".stardict";
-    if (mkdir(conf_dir.c_str(), S_IRWXU) == -1 && errno != EEXIST) {
-        printf("g_mkdir failed: %s\n", strerror(errno));
-    }
-
-    Library::pbookname_to_ifo = &bookname_to_ifo;
-    Library lib(param);
-    lib.load(dicts_dir_list, order_list, disable_list);
-
-    if (param.listen_port > 0) {
-        httplib::Server serv;
-        serv.set_base_dir(data_dir.c_str());
-        serv.get("/", [&](const httplib::Request &req, httplib::Response &res) {
-            std::string result = lib.process_phrase(req.get_param_value("w").c_str(), true);
-            res.set_content(result, "text/html");
-        });
-        //serv.get("/.*/res/.*", Ser);
-        serv.listen("0.0.0.0", (int)param.listen_port);
-    } else if (optind < argc) {
-        for (int i = optind; i < argc; ++i)
-            if (lib.process_phrase(argv[i], false).length() <= 0) {
-                return 3;
-            }
-    } else {
-        printf("There is no word.\n");
-        return 4;
-    }
-    return EXIT_SUCCESS;
-} catch (const std::exception &ex) {
-    exit(120);
+    std::unique_ptr<Library> lib(new Library(param, bookname_to_ifo));
+    lib->load(dicts_dir_list, order_list, disable_list);
+    return lib;
 }
-
 static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json)
 {
     bool first_entry = true;
