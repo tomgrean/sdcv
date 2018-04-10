@@ -62,7 +62,7 @@ static const std::string &g_get_user_cache_dir()
     static std::string user_cache;
     if (user_cache.length() <= 0) {
         if (getenv("HOME"))
-            user_cache = std::string(getenv("HOME")) + ".cache";
+            user_cache = std::string(getenv("HOME")) + G_DIR_SEPARATOR ".cache";
         else
             user_cache = "/tmp/sdwv_cache";
     }
@@ -829,8 +829,8 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
     if (!load_ifofile(ifofilename, idxfilesize))
         return false;
 
-    std::string fullfilename(ifofilename);
-    fullfilename.replace(fullfilename.length() - (sizeof("ifo") - 1), sizeof("ifo") - 1, "dict.dz");
+    std::string basefilename(ifofilename, 0, ifofilename.size() - (sizeof("ifo") - 1));
+    std::string fullfilename(basefilename + "dict.dz");
 
     if (!access(fullfilename.c_str(), R_OK)) {
         dictdzfile.reset(new DictData);
@@ -839,7 +839,7 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
             return false;
         }
     } else {
-        fullfilename.erase(fullfilename.length() - (sizeof(".dz") - 1), sizeof(".dz") - 1);
+        fullfilename = basefilename + "dict";
         dictfile = fopen(fullfilename.c_str(), "rb");
         if (!dictfile) {
             //g_print("open file %s failed!\n",fullfilename);
@@ -847,21 +847,18 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
         }
     }
 
-    fullfilename = ifofilename;
-    fullfilename.replace(fullfilename.length() - (sizeof("ifo") - 1), sizeof("ifo") - 1, "idx.gz");
-
+    fullfilename = basefilename + "idx.gz";
     if (!access(fullfilename.c_str(), R_OK)) {
         idx_file.reset(new WordListIndex);
     } else {
-        fullfilename.erase(fullfilename.length() - (sizeof(".gz") - 1), sizeof(".gz") - 1);
+    	fullfilename = basefilename + "idx";
         idx_file.reset(new OffsetIndex);
     }
 
     if (!idx_file->load(fullfilename, wordcount, idxfilesize, verbose))
         return false;
 
-    fullfilename = ifofilename;
-    fullfilename.replace(fullfilename.length() - (sizeof("ifo") - 1), sizeof("ifo") - 1, "syn");
+    fullfilename = basefilename + "syn";
     syn_file.reset(new SynFile);
     syn_file->load(fullfilename, syn_wordcount);
 
