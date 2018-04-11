@@ -851,7 +851,7 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
     if (!access(fullfilename.c_str(), R_OK)) {
         idx_file.reset(new WordListIndex);
     } else {
-    	fullfilename = basefilename + "idx";
+        fullfilename = basefilename + "idx";
         idx_file.reset(new OffsetIndex);
     }
 
@@ -1610,28 +1610,28 @@ std::map<std::string, std::string> load_from_ifo_file(const std::string &ifofile
     static const char DICT_MAGIC_DATA[] = "StarDict's dict ifo file";
 
     const char *magic_data = istreedict ? TREEDICT_MAGIC_DATA : DICT_MAGIC_DATA;
+    const int magic_len = (istreedict ? (sizeof(TREEDICT_MAGIC_DATA) / sizeof(char))
+            : (sizeof(DICT_MAGIC_DATA) / sizeof(char))) - 1;
     static const unsigned char utf8_bom[] = { 0xEF, 0xBB, 0xBF, '\0' };
     //if (!g_str_has_prefix(
     //        g_str_has_prefix((buffer), (const char *)(utf8_bom)) ? (buffer) + 3 : (buffer),
     //        magic_data)) {
-    const char *checker = buffer;
+    char *checker = buffer;
     if (!strncmp((const char*)utf8_bom, checker, 3))
         checker += 3;
-    if (strncmp(magic_data, checker, strlen(magic_data))) {
+    if (strncmp(magic_data, checker, magic_len)) {
         return result;
     }
 
-    char *p = buffer + strlen(magic_data) - 1;
-    while (true) {
-        char *t = strsep(&p, "\n");
-        if (!t)
-            break;
+    checker += magic_len;
+    char *t = strtok_r(checker, "\r\n", &checker);
+    while (t) {
         char *eq = strchr(t, '=');
         if (eq) {
-            *eq = '\0';
-            eq++;
+            *eq++ = '\0';
             result[t] = eq;
         }
+        t = strtok_r(nullptr, "\r\n", &checker);
     }
     free(buffer);
     result["ifo_file_name"] = ifofilename;

@@ -191,8 +191,7 @@ int main(int argc, char *argv[]) try {
             std::string result = lib->process_phrase(req.get_param_value("w").c_str(), true);
             res.set_content(result, "text/html");
         });
-        //serv.get("/.*/res/.*", Ser);
-        serv.listen("0.0.0.0", (int)param.listen_port);
+        serv.listen("0.0.0.0", param.listen_port);
     } else if (optind < argc) {
         for (int i = optind; i < argc; ++i)
             if (lib->process_phrase(argv[i], false).length() <= 0) {
@@ -250,16 +249,15 @@ static std::unique_ptr<Library> prepare(Param_config &param)
     if (param.use_dict_list) {
         char *dict_list_str = strdup(param.use_dict_list);
         char *p = dict_list_str;
-        while (true) {
-            char *t = strsep(&p, ";\n");
-            if (!t)
-                break;
-            auto found = bookname_to_ifo.find(t);
+        char *t = strtok_r(p, "\r\n", &p);
+        while (t) {
+            const auto found = bookname_to_ifo.find(t);
             if (found != bookname_to_ifo.end())
                 order_list.push_back(found->second);
+            t = strtok_r(nullptr, "\r\n", &p);
         }
         free(dict_list_str);
-        for (auto &x : bookname_to_ifo) {
+        for (const auto &x : bookname_to_ifo) {
             const auto found = std::find(order_list.begin(), order_list.end(), x.second);
             if (found == order_list.end()) {
                 disable_list.push_back(x.second);
@@ -268,13 +266,12 @@ static std::unique_ptr<Library> prepare(Param_config &param)
     } else {
         const std::string odering_cfg_file = std::string(homedir) + G_DIR_SEPARATOR ".sdwv_ordering";
         char *ordering_str = g_file_get_contents(odering_cfg_file.c_str());
-        if (ordering_str != nullptr) {
+        if (ordering_str) {
             char *p = ordering_str;
-            while (true) {
-                char *t = strsep(&p, "\n");
-                if (!t)
-                    break;
+            char *t = strtok_r(p, "\r\n", &p);
+            while (t) {
                 order_list.push_back(bookname_to_ifo.at(t));
+                t = strtok_r(nullptr, "\r\n", &p);
             }
             free(ordering_str);
         }
