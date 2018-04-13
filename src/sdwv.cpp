@@ -188,13 +188,32 @@ int main(int argc, char *argv[]) try {
         httplib::Server serv;
         serv.set_base_dir(param.opt_data_dir);
         serv.get("/", [&](const httplib::Request &req, httplib::Response &res) {
-            std::string result = lib->process_phrase(req.get_param_value("w").c_str(), true);
+            bool all_data = true;
+            if (req.has_param("co")) {//content only. partial html
+                all_data = false;
+            }
+            std::string result = lib->process_phrase(req.get_param_value("w").c_str(), all_data);
             res.set_content(result, "text/html");
+        });
+        serv.get("/neigh", [&](const httplib::Request &req, httplib::Response &res) {
+            int offset;
+            uint32_t length;
+            char *pch;
+            offset = strtol(req.get_param_value("off").c_str(), &pch, 10);
+            if (*pch) {
+                offset = 0;
+            }
+            length = strtoul(req.get_param_value("len").c_str(), &pch, 10);
+            if (*pch) {
+                length = 10;
+            }
+            std::string result = lib->get_neighbour(req.get_param_value("w").c_str(), offset, length);
+            res.set_content(result, "text/plain");
         });
         serv.listen("0.0.0.0", param.listen_port);
     } else if (optind < argc) {
         for (int i = optind; i < argc; ++i)
-            if (lib->process_phrase(argv[i], false).length() <= 0) {
+            if (lib->process_phrase(argv[i], true).length() <= 0) {
                 return 3;
             }
     } else {

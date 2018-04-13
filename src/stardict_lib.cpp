@@ -86,10 +86,7 @@ static void unicode_strdown(TC *str)
     }
 }
 #endif
-inline static const char *g_utf8_casefold(const char *p)
-{
-    return p;
-}
+
 inline static char *g_utf8_strdown(const char *p)
 {
     if (!p)
@@ -103,6 +100,7 @@ inline static char *g_utf8_strdown(const char *p)
     }
     return result;
 }
+#if 0
 inline static void utf8_strup(char *p)
 {
     if (!p)
@@ -131,6 +129,7 @@ inline static void utf8_camelcase(char *p)
         }
     }
 }
+#endif
 }
 
 char *DictBase::GetWordData(uint32_t idxitem_offset, uint32_t idxitem_size)
@@ -395,14 +394,14 @@ public:
         if (idxfile)
             fclose(idxfile);
     }
-    bool load(const std::string &url, uint64_t wc, uint64_t fsize, bool verbose) override;
-    const char *get_key(int64_t idx) override;
-    void get_data(int64_t idx) override { get_key(idx); }
-    const char *get_key_and_data(int64_t idx) override
+    bool load(const std::string &url, uint32_t wc, uint32_t fsize, bool verbose) override;
+    const char *get_key(int32_t idx) override;
+    void get_data(int32_t idx) override { get_key(idx); }
+    const char *get_key_and_data(int32_t idx) override
     {
         return get_key(idx);
     }
-    bool lookup(const char *str, int64_t &idx) override;
+    bool lookup(const char *str, int32_t &idx, std::function<int(const char*,const char*)> cmp) override;
 
 private:
     static const int ENTR_PER_PAGE = 32;
@@ -410,13 +409,13 @@ private:
 
     std::vector<uint32_t> wordoffset;
     FILE *idxfile;
-    uint64_t wordcount;
+    uint32_t wordcount;
 
     char wordentry_buf[256 + sizeof(uint32_t) * 2]; // The length of "word_str" should be less than 256. See src/tools/DICTFILE_FORMAT.
     struct index_entry {
-        int64_t idx;
+        int32_t idx;
         std::string keystr;
-        void assign(int64_t i, const std::string &str)
+        void assign(int32_t i, const std::string &str)
         {
             idx = i;
             keystr.assign(str);
@@ -430,15 +429,15 @@ private:
     };
     std::vector<char> page_data;
     struct page_t {
-        int64_t idx = -1;
+        int32_t idx = -1;
         page_entry entries[ENTR_PER_PAGE];
 
         page_t() {}
-        void fill(char *data, int nent, int64_t idx_);
+        void fill(char *data, int nent, int32_t idx_);
     } page;
-    uint64_t load_page(int64_t page_idx);
-    const char *read_first_on_page_key(int64_t page_idx);
-    const char *get_first_on_page_key(int64_t page_idx);
+    uint32_t load_page(int32_t page_idx);
+    const char *read_first_on_page_key(int32_t page_idx);
+    const char *get_first_on_page_key(int32_t page_idx);
     bool load_cache(const std::string &url);
     bool save_cache(const std::string &url, bool verbose);
     static std::list<std::string> get_cache_variant(const std::string &url);
@@ -455,26 +454,26 @@ public:
     {
     }
     ~WordListIndex() { free(idxdatabuf); }
-    bool load(const std::string &url, uint64_t wc, uint64_t fsize, bool verbose) override;
-    const char *get_key(int64_t idx) override { return wordlist[idx]; }
-    void get_data(int64_t idx) override;
-    const char *get_key_and_data(int64_t idx) override
+    bool load(const std::string &url, uint32_t wc, uint32_t fsize, bool verbose) override;
+    const char *get_key(int32_t idx) override { return wordlist[idx]; }
+    void get_data(int32_t idx) override;
+    const char *get_key_and_data(int32_t idx) override
     {
         get_data(idx);
         return get_key(idx);
     }
-    bool lookup(const char *str, int64_t &idx) override;
+    bool lookup(const char *str, int32_t &idx, std::function<int(const char*,const char*)> cmp) override;
 
 private:
     char *idxdatabuf;
     std::vector<char *> wordlist;
 };
 
-void OffsetIndex::page_t::fill(char *data, int nent, int64_t idx_)
+void OffsetIndex::page_t::fill(char *data, int nent, int32_t idx_)
 {
     idx = idx_;
     char *p = data;
-    int64_t len;
+    int32_t len;
     for (int i = 0; i < nent; ++i) {
         entries[i].keystr = p;
         len = strlen(p);
@@ -486,7 +485,7 @@ void OffsetIndex::page_t::fill(char *data, int nent, int64_t idx_)
     }
 }
 
-inline const char *OffsetIndex::read_first_on_page_key(int64_t page_idx)
+inline const char *OffsetIndex::read_first_on_page_key(int32_t page_idx)
 {
     fseek(idxfile, wordoffset[page_idx], SEEK_SET);
     uint32_t page_size = wordoffset[page_idx + 1] - wordoffset[page_idx];
@@ -498,7 +497,7 @@ inline const char *OffsetIndex::read_first_on_page_key(int64_t page_idx)
     return wordentry_buf;
 }
 
-inline const char *OffsetIndex::get_first_on_page_key(int64_t page_idx)
+inline const char *OffsetIndex::get_first_on_page_key(int32_t page_idx)
 {
     if (page_idx < middle.idx) {
         if (page_idx == first.idx)
@@ -582,10 +581,10 @@ bool OffsetIndex::save_cache(const std::string &url, bool verbose)
     return false;
 }
 
-bool OffsetIndex::load(const std::string &url, uint64_t wc, uint64_t fsize, bool verbose)
+bool OffsetIndex::load(const std::string &url, uint32_t wc, uint32_t fsize, bool verbose)
 {
     wordcount = wc;
-    uint64_t npages = (wc - 1) / ENTR_PER_PAGE + 2;
+    uint32_t npages = (wc - 1) / ENTR_PER_PAGE + 2;
     wordoffset.resize(npages);
     if (!load_cache(url)) { //map file will close after finish of block
         MapFile map_file;
@@ -594,7 +593,7 @@ bool OffsetIndex::load(const std::string &url, uint64_t wc, uint64_t fsize, bool
         const char *idxdatabuffer = map_file.begin();
 
         const char *p1 = idxdatabuffer;
-        uint64_t index_size;
+        uint32_t index_size;
         uint32_t j = 0;
         for (uint32_t i = 0; i < wc; i++) {
             index_size = strlen(p1) + 1 + 2 * sizeof(uint32_t);
@@ -622,10 +621,10 @@ bool OffsetIndex::load(const std::string &url, uint64_t wc, uint64_t fsize, bool
     return true;
 }
 
-inline uint64_t OffsetIndex::load_page(int64_t page_idx)
+inline uint32_t OffsetIndex::load_page(int32_t page_idx)
 {
-    uint64_t nentr = ENTR_PER_PAGE;
-    if (page_idx == int64_t(wordoffset.size() - 2))
+    uint32_t nentr = ENTR_PER_PAGE;
+    if (page_idx == int32_t(wordoffset.size() - 2))
         if ((nentr = (wordcount % ENTR_PER_PAGE)) == 0)
             nentr = ENTR_PER_PAGE;
 
@@ -641,27 +640,27 @@ inline uint64_t OffsetIndex::load_page(int64_t page_idx)
     return nentr;
 }
 
-const char *OffsetIndex::get_key(int64_t idx)
+const char *OffsetIndex::get_key(int32_t idx)
 {
     load_page(idx / ENTR_PER_PAGE);
-    int64_t idx_in_page = idx % ENTR_PER_PAGE;
+    int32_t idx_in_page = idx % ENTR_PER_PAGE;
     wordentry_offset = page.entries[idx_in_page].off;
     wordentry_size = page.entries[idx_in_page].size;
 
     return page.entries[idx_in_page].keystr;
 }
 
-bool OffsetIndex::lookup(const char *str, int64_t &idx)
+bool OffsetIndex::lookup(const char *str, int32_t &idx, std::function<int(const char*,const char*)> cmp)
 {
     bool bFound = false;
-    int64_t iFrom;
-    int64_t iTo = wordoffset.size() - 2;
+    int32_t iFrom;
+    int32_t iTo = wordoffset.size() - 2;
     int cmpint;
-    int64_t iThisIndex;
-    if (stardict_strcmp(str, first.keystr.c_str()) < 0) {
+    int32_t iThisIndex;
+    if (cmp(str, first.keystr.c_str()) < 0) {
         idx = 0;
         return false;
-    } else if (stardict_strcmp(str, real_last.keystr.c_str()) > 0) {
+    } else if (cmp(str, real_last.keystr.c_str()) > 0) {
         idx = INVALID_INDEX;
         return false;
     } else {
@@ -669,7 +668,7 @@ bool OffsetIndex::lookup(const char *str, int64_t &idx)
         iThisIndex = 0;
         while (iFrom <= iTo) {
             iThisIndex = (iFrom + iTo) / 2;
-            cmpint = stardict_strcmp(str, get_first_on_page_key(iThisIndex));
+            cmpint = cmp(str, get_first_on_page_key(iThisIndex));
             if (cmpint > 0)
                 iFrom = iThisIndex + 1;
             else if (cmpint < 0)
@@ -685,13 +684,13 @@ bool OffsetIndex::lookup(const char *str, int64_t &idx)
             idx = iThisIndex;
     }
     if (!bFound) {
-        uint64_t netr = load_page(idx);
+        uint32_t netr = load_page(idx);
         iFrom = 1; // Needn't search the first word anymore.
         iTo = netr - 1;
         iThisIndex = 0;
         while (iFrom <= iTo) {
             iThisIndex = (iFrom + iTo) / 2;
-            cmpint = stardict_strcmp(str, page.entries[iThisIndex].keystr);
+            cmpint = cmp(str, page.entries[iThisIndex].keystr);
             if (cmpint > 0)
                 iFrom = iThisIndex + 1;
             else if (cmpint < 0)
@@ -712,7 +711,7 @@ bool OffsetIndex::lookup(const char *str, int64_t &idx)
     return bFound;
 }
 
-bool WordListIndex::load(const std::string &url, uint64_t wc, uint64_t fsize, bool/* verbose*/)
+bool WordListIndex::load(const std::string &url, uint32_t wc, uint32_t fsize, bool/* verbose*/)
 {
     gzFile in = gzopen(url.c_str(), "rb");
     if (in == nullptr)
@@ -725,7 +724,7 @@ bool WordListIndex::load(const std::string &url, uint64_t wc, uint64_t fsize, bo
     if (len < 0)
         return false;
 
-    if (uint64_t(len) != fsize)
+    if (uint32_t(len) != fsize)
         return false;
 
     wordlist.resize(wc + 1);
@@ -740,7 +739,7 @@ bool WordListIndex::load(const std::string &url, uint64_t wc, uint64_t fsize, bo
     return true;
 }
 
-void WordListIndex::get_data(int64_t idx)
+void WordListIndex::get_data(int32_t idx)
 {
     char *p1 = wordlist[idx] + strlen(wordlist[idx]) + sizeof(char);
     wordentry_offset = ntohl(get_uint32(p1));
@@ -748,22 +747,22 @@ void WordListIndex::get_data(int64_t idx)
     wordentry_size = ntohl(get_uint32(p1));
 }
 
-bool WordListIndex::lookup(const char *str, int64_t &idx)
+bool WordListIndex::lookup(const char *str, int32_t &idx, std::function<int(const char*,const char*)> cmp)
 {
     bool bFound = false;
-    int64_t iTo = wordlist.size() - 2;
+    int32_t iTo = wordlist.size() - 2;
 
-    if (stardict_strcmp(str, get_key(0)) < 0) {
+    if (cmp(str, get_key(0)) < 0) {
         idx = 0;
-    } else if (stardict_strcmp(str, get_key(iTo)) > 0) {
+    } else if (cmp(str, get_key(iTo)) > 0) {
         idx = INVALID_INDEX;
     } else {
-        int64_t iThisIndex = 0;
-        int64_t iFrom = 0;
+        int32_t iThisIndex = 0;
+        int32_t iFrom = 0;
         int cmpint;
         while (iFrom <= iTo) {
             iThisIndex = (iFrom + iTo) / 2;
-            cmpint = stardict_strcmp(str, get_key(iThisIndex));
+            cmpint = cmp(str, get_key(iThisIndex));
             if (cmpint > 0)
                 iFrom = iThisIndex + 1;
             else if (cmpint < 0)
@@ -782,7 +781,7 @@ bool WordListIndex::lookup(const char *str, int64_t &idx)
 }
 }
 
-bool SynFile::load(const std::string &url, uint64_t wc)
+bool SynFile::load(const std::string &url, uint32_t wc)
 {
     struct stat stat_buf;
     if (!stat(url.c_str(), &stat_buf)) {
@@ -794,8 +793,7 @@ bool SynFile::load(const std::string &url, uint64_t wc)
             // each entry in a syn-file is:
             // - 0-terminated string
             // 4-byte index into .dict file in network byte order
-            const char * lower_string{ g_utf8_casefold(current) };
-            std::string synonym{ (lower_string) };
+            std::string synonym(current);
             current += synonym.length() + 1;
             const uint32_t idx = ntohl(get_uint32(current));
             current += sizeof(idx);
@@ -807,10 +805,11 @@ bool SynFile::load(const std::string &url, uint64_t wc)
     }
 }
 
-bool SynFile::lookup(const char *str, int64_t &idx)
+bool SynFile::lookup(const char *str, int32_t &idx)
 {
-    const char *lower_string{ g_utf8_casefold(str) };
+    char *lower_string = g_utf8_strdown(str);
     auto it = synonyms.find((lower_string));
+    free(lower_string);
     if (it != synonyms.end()) {
         idx = it->second;
         return true;
@@ -818,14 +817,14 @@ bool SynFile::lookup(const char *str, int64_t &idx)
     return false;
 }
 
-bool Dict::Lookup(const char *str, int64_t &idx)
+bool Dict::Lookup(const char *str, int32_t &idx, bool ignorecase)
 {
-    return syn_file->lookup(str, idx) || idx_file->lookup(str, idx);
+    return syn_file->lookup(str, idx) || idx_file->lookup(str, idx, ignorecase ? strcasecmp : stardict_strcmp);
 }
 
 bool Dict::load(const std::string &ifofilename, bool verbose)
 {
-    uint64_t idxfilesize;
+    uint32_t idxfilesize;
     if (!load_ifofile(ifofilename, idxfilesize))
         return false;
 
@@ -866,7 +865,7 @@ bool Dict::load(const std::string &ifofilename, bool verbose)
     return true;
 }
 
-bool Dict::load_ifofile(const std::string &ifofilename, uint64_t &idxfilesize)
+bool Dict::load_ifofile(const std::string &ifofilename, uint32_t &idxfilesize)
 {
     const auto &&ifo = load_from_ifo_file(ifofilename, false);
     if (ifo.size() < 1)
@@ -895,7 +894,7 @@ bool Dict::load_ifofile(const std::string &ifofilename, uint64_t &idxfilesize)
     return true;
 }
 
-bool Dict::LookupWithRule(const std::regex &spec, int64_t *aIndex, int iBuffLen)
+bool Dict::LookupWithRule(const std::regex &spec, int32_t *aIndex, int iBuffLen)
 {
     int iIndexCount = 0;
 
@@ -946,11 +945,11 @@ void Libs::load(const std::list<std::string> &dicts_dirs,
     });
 }
 
-const char *Libs::poGetCurrentWord(int64_t *iCurrent)
+const char *Libs::poGetCurrentWord(int32_t *iCurrent)
 {
     const char *poCurrentWord = nullptr;
     const char *word;
-    for (std::vector<Dict *>::size_type iLib = 0; iLib < oLib.size(); iLib++) {
+    for (uint32_t iLib = 0; iLib < oLib.size(); iLib++) {
         if (iCurrent[iLib] == INVALID_INDEX)
             continue;
         if (iCurrent[iLib] >= narticles(iLib) || iCurrent[iLib] < 0)
@@ -967,18 +966,18 @@ const char *Libs::poGetCurrentWord(int64_t *iCurrent)
     return poCurrentWord;
 }
 
-const char *Libs::poGetNextWord(const char *sWord, int64_t *iCurrent)
+const char *Libs::poGetNextWord(const char *sWord, int32_t *iCurrent)
 {
     // the input can be:
     // (word,iCurrent),read word,write iNext to iCurrent,and return next word. used by TopWin::NextCallback();
     // (nullptr,iCurrent),read iCurrent,write iNext to iCurrent,and return next word. used by AppCore::ListWords();
     const char *poCurrentWord = nullptr;
-    size_t iCurrentLib = 0;
+    uint32_t iCurrentLib = 0;
     const char *word;
 
-    for (size_t iLib = 0; iLib < oLib.size(); ++iLib) {
+    for (uint32_t iLib = 0; iLib < oLib.size(); ++iLib) {
         if (sWord)
-            oLib[iLib]->Lookup(sWord, iCurrent[iLib]);
+            oLib[iLib]->Lookup(sWord, iCurrent[iLib], false);
         if (iCurrent[iLib] == INVALID_INDEX)
             continue;
         if (iCurrent[iLib] >= narticles(iLib) || iCurrent[iLib] < 0)
@@ -997,7 +996,7 @@ const char *Libs::poGetNextWord(const char *sWord, int64_t *iCurrent)
     }
     if (poCurrentWord) {
         iCurrent[iCurrentLib]++;
-        for (std::vector<Dict *>::size_type iLib = 0; iLib < oLib.size(); iLib++) {
+        for (uint32_t iLib = 0; iLib < oLib.size(); iLib++) {
             if (iLib == iCurrentLib)
                 continue;
             if (iCurrent[iLib] == INVALID_INDEX)
@@ -1013,14 +1012,14 @@ const char *Libs::poGetNextWord(const char *sWord, int64_t *iCurrent)
 }
 
 const char *
-Libs::poGetPreWord(int64_t *iCurrent)
+Libs::poGetPreWord(int32_t *iCurrent)
 {
     // used by TopWin::PreviousCallback(); the iCurrent is cached by AppCore::TopWinWordChange();
     const char *poCurrentWord = nullptr;
     std::vector<Dict *>::size_type iCurrentLib = 0;
     const char *word;
 
-    for (std::vector<Dict *>::size_type iLib = 0; iLib < oLib.size(); iLib++) {
+    for (uint32_t iLib = 0; iLib < oLib.size(); iLib++) {
         if (iCurrent[iLib] == INVALID_INDEX)
             iCurrent[iLib] = narticles(iLib);
         else {
@@ -1041,7 +1040,7 @@ Libs::poGetPreWord(int64_t *iCurrent)
 
     if (poCurrentWord) {
         iCurrent[iCurrentLib]--;
-        for (std::vector<Dict *>::size_type iLib = 0; iLib < oLib.size(); iLib++) {
+        for (uint32_t iLib = 0; iLib < oLib.size(); iLib++) {
             if (iLib == iCurrentLib)
                 continue;
             if (iCurrent[iLib] > narticles(iLib) || iCurrent[iLib] <= 0)
@@ -1057,296 +1056,136 @@ Libs::poGetPreWord(int64_t *iCurrent)
     return poCurrentWord;
 }
 
-bool Libs::LookupSimilarWord(const char *sWord, int64_t &iWordIndex, int iLib)
+bool Libs::LookupSimilarWord(const char *sWord, int32_t &iWordIndex, int iLib)
 {
-    int64_t iIndex;
-    bool bFound = false;
-    char *casestr;
+    int32_t iIndex;
+    bool bFound;
 
     // to lower case.
-    casestr = g_utf8_strdown(sWord);
-    if (strcmp(casestr, sWord)) {
-        if (oLib[iLib]->Lookup(casestr, iIndex))
-            bFound = true;
-    }
-    // to upper case.
-    if (!bFound) {
-        utf8_strup(casestr);
-        if (strcmp(casestr, sWord)) {
-            if (oLib[iLib]->Lookup(casestr, iIndex))
-                bFound = true;
-        }
-    }
-    // Upper the first character and lower others.
-    if (!bFound) {
-        utf8_camelcase(casestr);
-        if (strcmp(casestr, sWord)) {
-            if (oLib[iLib]->Lookup(casestr, iIndex))
-                bFound = true;
-        }
-    }
-    free(casestr);
+    bFound = oLib[iLib]->Lookup(sWord, iIndex, true);
 
     if (bIsPureEnglish(sWord)) {
         // If not Found , try other status of sWord.
         int iWordLen = strlen(sWord);
-        bool isupcase;
 
         char *sNewWord = (char *)malloc(iWordLen + 1);
 
         //cut one char "s" or "d"
         if (!bFound && iWordLen > 1) {
-            isupcase = sWord[iWordLen - 1] == 'S' || !strncmp(&sWord[iWordLen - 2], "ED", 2);
-            if (isupcase || sWord[iWordLen - 1] == 's' || !strncmp(&sWord[iWordLen - 2], "ed", 2)) {
+            if (sWord[iWordLen - 1] == 'S' || sWord[iWordLen - 1] == 's'|| !strncasecmp(&sWord[iWordLen - 2], "ed", 2)) {
                 strcpy(sNewWord, sWord);
                 sNewWord[iWordLen - 1] = '\0'; // cut "s" or "d"
-                if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                    bFound = true;
-                else if (isupcase || isupper(sWord[0])) {
-                    casestr = g_utf8_strdown(sNewWord);
-                    if (strcmp(casestr, sNewWord)) {
-                        if (oLib[iLib]->Lookup(casestr, iIndex))
-                            bFound = true;
-                    }
-                    free(casestr);
-                }
+                bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
             }
         }
 
         //cut "ly"
         if (!bFound && iWordLen > 2) {
-            isupcase = !strncmp(&sWord[iWordLen - 2], "LY", 2);
-            if (isupcase || (!strncmp(&sWord[iWordLen - 2], "ly", 2))) {
+            if (!strncasecmp(&sWord[iWordLen - 2], "ly", 2)) {
                 strcpy(sNewWord, sWord);
                 sNewWord[iWordLen - 2] = '\0'; // cut "ly"
                 if (iWordLen > 5 && sNewWord[iWordLen - 3] == sNewWord[iWordLen - 4]
                     && !bIsVowel(sNewWord[iWordLen - 4]) && bIsVowel(sNewWord[iWordLen - 5])) { //doubled
 
                     sNewWord[iWordLen - 3] = '\0';
-                    if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                        bFound = true;
-                    else {
-                        if (isupcase || isupper(sWord[0])) {
-                            casestr = g_utf8_strdown(sNewWord);
-                            if (strcmp(casestr, sNewWord)) {
-                                if (oLib[iLib]->Lookup(casestr, iIndex))
-                                    bFound = true;
-                            }
-                            free(casestr);
-                        }
-                        if (!bFound)
-                            sNewWord[iWordLen - 3] = sNewWord[iWordLen - 4]; //restore
-                    }
+                    bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
+                    if (!bFound)
+                        sNewWord[iWordLen - 3] = sNewWord[iWordLen - 4]; //restore
                 }
                 if (!bFound) {
-                    if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                        bFound = true;
-                    else if (isupcase || isupper(sWord[0])) {
-                        casestr = g_utf8_strdown(sNewWord);
-                        if (strcmp(casestr, sNewWord)) {
-                            if (oLib[iLib]->Lookup(casestr, iIndex))
-                                bFound = true;
-                        }
-                        free(casestr);
-                    }
+                    bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
                 }
             }
         }
 
         //cut "ing"
         if (!bFound && iWordLen > 3) {
-            isupcase = !strncmp(&sWord[iWordLen - 3], "ING", 3);
-            if (isupcase || !strncmp(&sWord[iWordLen - 3], "ing", 3)) {
+            if (!strncasecmp(&sWord[iWordLen - 3], "ing", 3)) {
                 strcpy(sNewWord, sWord);
                 sNewWord[iWordLen - 3] = '\0';
                 if (iWordLen > 6 && (sNewWord[iWordLen - 4] == sNewWord[iWordLen - 5])
                     && !bIsVowel(sNewWord[iWordLen - 5]) && bIsVowel(sNewWord[iWordLen - 6])) { //doubled
                     sNewWord[iWordLen - 4] = '\0';
-                    if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                        bFound = true;
-                    else {
-                        if (isupcase || isupper(sWord[0])) {
-                            casestr = g_utf8_strdown(sNewWord);
-                            if (strcmp(casestr, sNewWord)) {
-                                if (oLib[iLib]->Lookup(casestr, iIndex))
-                                    bFound = true;
-                            }
-                            free(casestr);
-                        }
-                        if (!bFound)
-                            sNewWord[iWordLen - 4] = sNewWord[iWordLen - 5]; //restore
-                    }
+                    bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
+                    if (!bFound)
+                        sNewWord[iWordLen - 4] = sNewWord[iWordLen - 5]; //restore
                 }
                 if (!bFound) {
-                    if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                        bFound = true;
-                    else if (isupcase || isupper(sWord[0])) {
-                        casestr = g_utf8_strdown(sNewWord);
-                        if (strcmp(casestr, sNewWord)) {
-                            if (oLib[iLib]->Lookup(casestr, iIndex))
-                                bFound = true;
-                        }
-                        free(casestr);
-                    }
+                    bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
                 }
                 if (!bFound) {
-                    if (isupcase)
-                        strcat(sNewWord, "E"); // add a char "E"
-                    else
-                        strcat(sNewWord, "e"); // add a char "e"
-                    if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                        bFound = true;
-                    else if (isupcase || isupper(sWord[0])) {
-                        casestr = g_utf8_strdown(sNewWord);
-                        if (strcmp(casestr, sNewWord)) {
-                            if (oLib[iLib]->Lookup(casestr, iIndex))
-                                bFound = true;
-                        }
-                        free(casestr);
-                    }
+                    strcat(sNewWord, "e"); // add a char "e"
+                    bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
                 }
             }
         }
 
         //cut two char "es"
         if (!bFound && iWordLen > 3) {
-            isupcase = (!strncmp(&sWord[iWordLen - 2], "ES", 2) && (sWord[iWordLen - 3] == 'S' || sWord[iWordLen - 3] == 'X' || sWord[iWordLen - 3] == 'O' || (iWordLen > 4 && sWord[iWordLen - 3] == 'H' && (sWord[iWordLen - 4] == 'C' || sWord[iWordLen - 4] == 'S'))));
-            if (isupcase || (!strncmp(&sWord[iWordLen - 2], "es", 2) && (sWord[iWordLen - 3] == 's' || sWord[iWordLen - 3] == 'x' || sWord[iWordLen - 3] == 'o' || (iWordLen > 4 && sWord[iWordLen - 3] == 'h' && (sWord[iWordLen - 4] == 'c' || sWord[iWordLen - 4] == 's'))))) {
+            if ((!strncasecmp(&sWord[iWordLen - 2], "es", 2) &&
+                    (sWord[iWordLen - 3] == 's' || sWord[iWordLen - 3] == 'x' || sWord[iWordLen - 3] == 'o' ||
+                    sWord[iWordLen - 3] == 'S' || sWord[iWordLen - 3] == 'X' || sWord[iWordLen - 3] == 'O' ||
+                    (iWordLen > 4 && (sWord[iWordLen - 3] == 'h' || sWord[iWordLen - 3] == 'H') &&
+                    (sWord[iWordLen - 4] == 'c' || sWord[iWordLen - 4] == 's' || sWord[iWordLen - 4] == 'C' || sWord[iWordLen - 4] == 'S'))))) {
                 strcpy(sNewWord, sWord);
                 sNewWord[iWordLen - 2] = '\0';
-                if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                    bFound = true;
-                else if (isupcase || isupper(sWord[0])) {
-                    casestr = g_utf8_strdown(sNewWord);
-                    if (strcmp(casestr, sNewWord)) {
-                        if (oLib[iLib]->Lookup(casestr, iIndex))
-                            bFound = true;
-                    }
-                    free(casestr);
-                }
+                bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
             }
         }
 
         //cut "ed"
         if (!bFound && iWordLen > 3) {
-            isupcase = !strncmp(&sWord[iWordLen - 2], "ED", 2);
-            if (isupcase || !strncmp(&sWord[iWordLen - 2], "ed", 2)) {
+            if (!strncasecmp(&sWord[iWordLen - 2], "ed", 2)) {
                 strcpy(sNewWord, sWord);
                 sNewWord[iWordLen - 2] = '\0';
                 if (iWordLen > 5 && (sNewWord[iWordLen - 3] == sNewWord[iWordLen - 4])
                     && !bIsVowel(sNewWord[iWordLen - 4]) && bIsVowel(sNewWord[iWordLen - 5])) { //doubled
                     sNewWord[iWordLen - 3] = '\0';
-                    if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                        bFound = true;
-                    else {
-                        if (isupcase || isupper(sWord[0])) {
-                            casestr = g_utf8_strdown(sNewWord);
-                            if (strcmp(casestr, sNewWord)) {
-                                if (oLib[iLib]->Lookup(casestr, iIndex))
-                                    bFound = true;
-                            }
-                            free(casestr);
-                        }
-                        if (!bFound)
-                            sNewWord[iWordLen - 3] = sNewWord[iWordLen - 4]; //restore
-                    }
+                    bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
+                    if (!bFound)
+                        sNewWord[iWordLen - 3] = sNewWord[iWordLen - 4]; //restore
                 }
                 if (!bFound) {
-                    if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                        bFound = true;
-                    else if (isupcase || isupper(sWord[0])) {
-                        casestr = g_utf8_strdown(sNewWord);
-                        if (strcmp(casestr, sNewWord)) {
-                            if (oLib[iLib]->Lookup(casestr, iIndex))
-                                bFound = true;
-                        }
-                        free(casestr);
-                    }
+                    bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
                 }
             }
         }
 
         // cut "ied" , add "y".
         if (!bFound && iWordLen > 3) {
-            isupcase = !strncmp(&sWord[iWordLen - 3], "IED", 3);
-            if (isupcase || (!strncmp(&sWord[iWordLen - 3], "ied", 3))) {
+            if (!strncasecmp(&sWord[iWordLen - 3], "ied", 3)) {
                 strcpy(sNewWord, sWord);
                 sNewWord[iWordLen - 3] = '\0';
-                if (isupcase)
-                    strcat(sNewWord, "Y"); // add a char "Y"
-                else
-                    strcat(sNewWord, "y"); // add a char "y"
-                if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                    bFound = true;
-                else if (isupcase || isupper(sWord[0])) {
-                    casestr = g_utf8_strdown(sNewWord);
-                    if (strcmp(casestr, sNewWord)) {
-                        if (oLib[iLib]->Lookup(casestr, iIndex))
-                            bFound = true;
-                    }
-                    free(casestr);
-                }
+                strcat(sNewWord, "y"); // add a char "y"
+                bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
             }
         }
 
         // cut "ies" , add "y".
         if (!bFound && iWordLen > 3) {
-            isupcase = !strncmp(&sWord[iWordLen - 3], "IES", 3);
-            if (isupcase || (!strncmp(&sWord[iWordLen - 3], "ies", 3))) {
+            if (!strncasecmp(&sWord[iWordLen - 3], "ies", 3)) {
                 strcpy(sNewWord, sWord);
                 sNewWord[iWordLen - 3] = '\0';
-                if (isupcase)
-                    strcat(sNewWord, "Y"); // add a char "Y"
-                else
-                    strcat(sNewWord, "y"); // add a char "y"
-                if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                    bFound = true;
-                else if (isupcase || isupper(sWord[0])) {
-                    casestr = g_utf8_strdown(sNewWord);
-                    if (strcmp(casestr, sNewWord)) {
-                        if (oLib[iLib]->Lookup(casestr, iIndex))
-                            bFound = true;
-                    }
-                    free(casestr);
-                }
+                strcat(sNewWord, "y"); // add a char "y"
+                bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
             }
         }
 
         // cut "er".
         if (!bFound && iWordLen > 2) {
-            isupcase = !strncmp(&sWord[iWordLen - 2], "ER", 2);
-            if (isupcase || (!strncmp(&sWord[iWordLen - 2], "er", 2))) {
+            if (!strncasecmp(&sWord[iWordLen - 2], "er", 2)) {
                 strcpy(sNewWord, sWord);
                 sNewWord[iWordLen - 2] = '\0';
-                if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                    bFound = true;
-                else if (isupcase || isupper(sWord[0])) {
-                    casestr = g_utf8_strdown(sNewWord);
-                    if (strcmp(casestr, sNewWord)) {
-                        if (oLib[iLib]->Lookup(casestr, iIndex))
-                            bFound = true;
-                    }
-                    free(casestr);
-                }
+                bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
             }
         }
 
         // cut "est".
         if (!bFound && iWordLen > 3) {
-            isupcase = !strncmp(&sWord[iWordLen - 3], "EST", 3);
-            if (isupcase || (!strncmp(&sWord[iWordLen - 3], "est", 3))) {
+            if (!strncasecmp(&sWord[iWordLen - 3], "est", 3)) {
                 strcpy(sNewWord, sWord);
                 sNewWord[iWordLen - 3] = '\0';
-                if (oLib[iLib]->Lookup(sNewWord, iIndex))
-                    bFound = true;
-                else if (isupcase || isupper(sWord[0])) {
-                    casestr = g_utf8_strdown(sNewWord);
-                    if (strcmp(casestr, sNewWord)) {
-                        if (oLib[iLib]->Lookup(casestr, iIndex))
-                            bFound = true;
-                    }
-                    free(casestr);
-                }
+                bFound = oLib[iLib]->Lookup(sNewWord, iIndex, true);
             }
         }
 
@@ -1365,9 +1204,9 @@ bool Libs::LookupSimilarWord(const char *sWord, int64_t &iWordIndex, int iLib)
     return bFound;
 }
 
-bool Libs::SimpleLookupWord(const char *sWord, int64_t &iWordIndex, int iLib)
+bool Libs::SimpleLookupWord(const char *sWord, int32_t &iWordIndex, int iLib)
 {
-    bool bFound = oLib[iLib]->Lookup(sWord, iWordIndex);
+    bool bFound = oLib[iLib]->Lookup(sWord, iWordIndex, false);
 
     if (!bFound && !param_.no_fuzzy)
         bFound = LookupSimilarWord(sWord, iWordIndex, iLib);
@@ -1392,10 +1231,10 @@ bool Libs::LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size)
     bool Found = false;
     EditDistance oEditDistance;
 
-    int64_t iCheckWordLen;
+    int32_t iCheckWordLen;
     const char *sCheck;
     TCH *ucs4_str1, *ucs4_str2;
-    int64_t ucs4_str2_len;
+    int32_t ucs4_str2_len;
 
 #if 0
     ucs4_str2 = g_utf8_to_ucs4_fast(sWord, -1, &ucs4_str2_len);
@@ -1488,14 +1327,12 @@ bool Libs::LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size)
 
 int Libs::LookupWithRule(const char *word, char **ppMatchWord)
 {
-    int64_t aiIndex[MAX_MATCH_ITEM_PER_LIB + 1];
+    int32_t aiIndex[MAX_MATCH_ITEM_PER_LIB + 1];
     int iMatchCount = 0;
 
     try {
         std::regex spec(word, std::regex::egrep | std::regex::icase | std::regex::nosubs);
         for (std::vector<Dict *>::size_type iLib = 0; iLib < oLib.size(); iLib++) {
-            //if(oLibs.LookdupWordsWithRule(pspec,aiIndex,MAX_MATCH_ITEM_PER_LIB+1-iMatchCount,iLib))
-            // -iMatchCount,so save time,but may got less result and the word may repeat.
 
             if (oLib[iLib]->LookupWithRule(spec, aiIndex, MAX_MATCH_ITEM_PER_LIB + 1)) {
                 if (progress_func)
@@ -1575,10 +1412,10 @@ bool Libs::LookupData(const char *sWord, std::vector<char *> *reslist)
             continue;
         if (progress_func)
             progress_func();
-        const uint64_t iwords = narticles(i);
+        const int iwords = narticles(i);
         const char *key;
         uint32_t offset, size;
-        for (uint64_t j = 0; j < iwords; ++j) {
+        for (int j = 0; j < iwords; ++j) {
             oLib[i]->get_key_and_data(j, &key, &offset, &size);
             if (size > max_size) {
                 origin_data = (char *)realloc(origin_data, size);
@@ -1640,7 +1477,7 @@ std::map<std::string, std::string> load_from_ifo_file(const std::string &ifofile
 query_t analyze_query(const char *s, std::string &res)
 {
     if (!s || !*s) {
-        res = "";
+        res = s;
         return qtSIMPLE;
     }
     if (*s == '/') {

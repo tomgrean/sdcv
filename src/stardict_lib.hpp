@@ -29,10 +29,10 @@ inline void set_uint32(char *addr, uint32_t val)
 }
 
 struct cacheItem {
-    uint32_t offset;
-    char *data;
+    uint32_t offset = 0;
+    char *data = nullptr;
     //write code here to make it inline
-    cacheItem() { data = nullptr; }
+    cacheItem() {}
     ~cacheItem() { free(data); }
 };
 
@@ -76,60 +76,60 @@ public:
     uint32_t wordentry_size;
 
     virtual ~IIndexFile() {}
-    virtual bool load(const std::string &url, uint64_t wc, uint64_t fsize, bool verbose) = 0;
-    virtual const char *get_key(int64_t idx) = 0;
-    virtual void get_data(int64_t idx) = 0;
-    virtual const char *get_key_and_data(int64_t idx) = 0;
-    virtual bool lookup(const char *str, int64_t &idx) = 0;
+    virtual bool load(const std::string &url, uint32_t wc, uint32_t fsize, bool verbose) = 0;
+    virtual const char *get_key(int32_t idx) = 0;
+    virtual void get_data(int32_t idx) = 0;
+    virtual const char *get_key_and_data(int32_t idx) = 0;
+    virtual bool lookup(const char *str, int32_t &idx, std::function<int(const char*,const char*)> cmp) = 0;
 };
 
 class SynFile
 {
 public:
-    bool load(const std::string &url, uint64_t wc);
-    bool lookup(const char *str, int64_t &idx);
+    bool load(const std::string &url, uint32_t wc);
+    bool lookup(const char *str, int32_t &idx);
 
 private:
-    std::map<std::string, uint64_t> synonyms;
+    std::map<std::string, uint32_t> synonyms;
 };
 
 class Dict : public DictBase
 {
 public:
-    Dict() {}
+    Dict(): wordcount(0), syn_wordcount(0) {}
     Dict(const Dict &) = delete;
     Dict &operator=(const Dict &) = delete;
     bool load(const std::string &ifofilename, bool verbose);
 
-    uint64_t narticles() const { return wordcount; }
+    uint32_t narticles() const { return wordcount; }
     const std::string &dict_name() const { return bookname; }
     const std::string &ifofilename() const { return ifo_file_name; }
 
-    const char *get_key(int64_t index) { return idx_file->get_key(index); }
-    char *get_data(int64_t index)
+    const char *get_key(int32_t index) { return idx_file->get_key(index); }
+    char *get_data(int32_t index)
     {
         idx_file->get_data(index);
         return DictBase::GetWordData(idx_file->wordentry_offset, idx_file->wordentry_size);
     }
-    void get_key_and_data(int64_t index, const char **key, uint32_t *offset, uint32_t *size)
+    void get_key_and_data(int32_t index, const char **key, uint32_t *offset, uint32_t *size)
     {
         *key = idx_file->get_key_and_data(index);
         *offset = idx_file->wordentry_offset;
         *size = idx_file->wordentry_size;
     }
-    bool Lookup(const char *str, int64_t &idx);
-    bool LookupWithRule(const std::regex &spec, int64_t *aIndex, int iBuffLen);
+    bool Lookup(const char *str, int32_t &idx, bool ignorecase);
+    bool LookupWithRule(const std::regex &spec, int32_t *aIndex, int iBuffLen);
 
 private:
     std::string ifo_file_name;
-    uint64_t wordcount;
-    uint64_t syn_wordcount;
+    uint32_t wordcount;
+    uint32_t syn_wordcount;
     std::string bookname;
 
     std::unique_ptr<IIndexFile> idx_file;
     std::unique_ptr<SynFile> syn_file;
 
-    bool load_ifofile(const std::string &ifofilename, uint64_t &idxfilesize);
+    bool load_ifofile(const std::string &ifofilename, uint32_t &idxfilesize);
 };
 
 class Libs
@@ -148,30 +148,30 @@ public:
     void load(const std::list<std::string> &dicts_dirs,
               const std::list<std::string> &order_list,
               const std::list<std::string> &disable_list);
-    int64_t narticles(int idict) const { return oLib[idict]->narticles(); }
+    int32_t narticles(int idict) const { return oLib[idict]->narticles(); }
     const std::string &dict_name(int idict) const { return oLib[idict]->dict_name(); }
     int ndicts() const { return oLib.size(); }
 
-    const char *poGetWord(int64_t iIndex, int iLib)
+    const char *poGetWord(int32_t iIndex, int iLib)
     {
         return oLib[iLib]->get_key(iIndex);
     }
-    char *poGetWordData(int64_t iIndex, int iLib)
+    char *poGetWordData(int32_t iIndex, int iLib)
     {
         if (iIndex == INVALID_INDEX)
             return nullptr;
         return oLib[iLib]->get_data(iIndex);
     }
-    const char *poGetCurrentWord(int64_t *iCurrent);
-    const char *poGetNextWord(const char *word, int64_t *iCurrent);
-    const char *poGetPreWord(int64_t *iCurrent);
-    bool LookupWord(const char *sWord, int64_t &iWordIndex, int iLib)
+    const char *poGetCurrentWord(int32_t *iCurrent);
+    const char *poGetNextWord(const char *word, int32_t *iCurrent);
+    const char *poGetPreWord(int32_t *iCurrent);
+    bool LookupWord(const char *sWord, int32_t &iWordIndex, int iLib)
     {
-        return oLib[iLib]->Lookup(sWord, iWordIndex);
+        return oLib[iLib]->Lookup(sWord, iWordIndex, false);
     }
-    bool SimpleLookupWord(const char *sWord, int64_t &iWordIndex, int iLib);
+    bool SimpleLookupWord(const char *sWord, int32_t &iWordIndex, int iLib);
 
-    bool LookupSimilarWord(const char *sWord, int64_t &iWordIndex, int iLib);
+    bool LookupSimilarWord(const char *sWord, int32_t &iWordIndex, int iLib);
     bool LookupWithFuzzy(const char *sWord, char *reslist[], int reslist_size);
     int LookupWithRule(const char *sWord, char *reslist[]);
     bool LookupData(const char *sWord, std::vector<char *> *reslist);

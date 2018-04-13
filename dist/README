@@ -1,5 +1,5 @@
 sdwv for embeded devices.
-I successfully compiled in gcc 4.9, and ran it in a rooted Android phone.
+I successfully compiled in gcc 4.9, with "-fPIE -pie", and ran it in a Android phone.
 
 The Android is supposed to be 5.0 or later.
 

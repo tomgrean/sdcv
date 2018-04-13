@@ -331,7 +331,7 @@ TSearchResult::TSearchResult(const std::string &name, const std::string &w, cons
 
 void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
 {
-    int64_t ind;
+    int32_t ind;
     res_list.reserve(ndicts());
     for (int idict = 0; idict < ndicts(); ++idict)
         if (SimpleLookupWord(str.c_str(), ind, idict))
@@ -379,49 +379,50 @@ void Library::LookupData(const std::string &str, TSearchResultList &res_list)
         }
 }
 
-Library::response_out::response_out(const char *str, const Param_config &param, bool bufferout) : param_(param), bufferout_(bufferout)
+Library::response_out::response_out(const char *str, const Param_config &param, bool alldata) : param_(param), all_data(alldata)
 {
     if (param_.json_output) {
-        if (bufferout_)
+        if (param_.listen_port > 0)
             buffer = "[";
         else
             putchar('[');
         return;
     }
-    if (param_.colorize) {
+    if (param_.colorize && all_data) {
         std::string headerhtml1 = "<html><head>"
                 "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"
                 "<title>Star Dictionary</title>"
                 "<style>\n"
-                ".qw {\n"
-                "    border: thin dashed grey;\n"
-                "}\n"
                 ".res_definition {\n"
-                "    width:80%;\n"
-                "    table-layout: fixed;\n"
-                "    border-left: thin dashed black;\n"
-                "    border-right: thin dashed black;\n"
-                "    padding-left: 5px;\n"
-                "    padding-right: 5px;\n"
-                "    padding-bottom: 5px;\n"
+                " width:80%;\n"
+                " table-layout: fixed;\n"
+                " border-left: thin dashed black;\n"
+                " border-right: thin dashed black;\n"
+                " padding-left: 5px;\n"
+                " padding-right: 5px;\n"
+                " padding-bottom: 5px;\n"
                 "}\n"
                 ".res_word {\n"
-                "    width:80%;\n"
-                "    table-layout: fixed;\n"
-                "    border: thin solid black;\n"
-                "    padding-left: 5px;\n"
-                "    padding-right: 5px;\n"
-                "    padding-bottom: 5px;\n"
+                " width:80%;\n"
+                " table-layout: fixed;\n"
+                " border: thin solid black;\n"
+                " padding-left: 5px;\n"
+                " padding-right: 5px;\n"
+                " padding-bottom: 5px;\n"
                 "}\n"
                 "</style>\n"
+                "<link href=\"html/jquery-ui.css\" rel=\"stylesheet\">\n"
                 "</head><body>"
                 " <form action=\"/\" method=\"GET\">"
-                "  word : <input class=\"qw\" id=\"qwt\" type=\"text\" name=\"w\" value=\"";
+                "  word : <input class=\"ui-autocomplete-input\" placeholder=\"input word\" id=\"qwt\" type=\"text\" name=\"w\" value=\"";
         std::string headerhtml2 = "\"/>"
                 " <input type=\"submit\" value=\"GO\"/>"
-                " </form>"
-                "<hr/>";
-        if (bufferout_) {
+                " </form><hr/>\n"
+                "<script src=\"html/jquery.js\"></script>\n"
+                "<script src=\"html/jquery-ui.js\"></script>\n"
+                "<script src=\"html/autohint.js\"></script>\n"
+                "<div id=\"dict_content\">";
+        if (param_.listen_port > 0) {
             buffer = headerhtml1 + str + headerhtml2;
         } else {
             printf("%s%s%s",
@@ -431,16 +432,9 @@ Library::response_out::response_out(const char *str, const Param_config &param, 
         }
     }
 }
-Library::response_out::~response_out()
-{
-    if (param_.json_output) {
-        putchar(']');
-    } else if (param_.colorize) {
-        printf("</body></html>");
-    }
-}
+
 Library::response_out &Library::response_out::operator <<(const std::string &content) {
-    if (bufferout_) {
+    if (param_.listen_port > 0) {
         buffer += content;
     } else {
         printf("%s", content.c_str());
@@ -449,15 +443,20 @@ Library::response_out &Library::response_out::operator <<(const std::string &con
 }
 std::string Library::response_out::get_content() {
     std::string content;
-    if (!bufferout_) {
-        return content;
-    }
-    content = buffer;
-    buffer = std::string();
-    if (param_.json_output) {
-        content += ']';
-    } else if (param_.colorize) {
-        content += "</body></html>";
+    if (param_.listen_port > 0) {
+        content = buffer;
+        buffer = std::string();
+        if (param_.json_output) {
+            content += ']';
+        } else if (param_.colorize && all_data) {
+            content += "</div></body></html>";
+        }
+    } else {
+        if (param_.json_output) {
+            putchar(']');
+        } else if (param_.colorize && all_data) {
+            printf("</div></body></html>");
+        }
     }
     return content;
 }
@@ -504,9 +503,9 @@ void Library::response_out::print_search_result(TSearchResultList &res_list)
     }
 }
 
-const std::string Library::process_phrase(const char *str, bool buffer_out)
+const std::string Library::process_phrase(const char *str, bool alldata)
 {
-    response_out outputer(str, param_, buffer_out);
+    response_out outputer(str, param_, alldata);
     if (nullptr == str || '\0' == str[0])
         return outputer.get_content();
 
@@ -539,7 +538,7 @@ const std::string Library::process_phrase(const char *str, bool buffer_out)
         LookupWithRule(query, res_list);
         break;
     case qtSIMPLE:
-        SimpleLookup(str, res_list);
+        SimpleLookup(query, res_list);
         if (res_list.empty() && !param_.no_fuzzy)
             LookupWithFuzzy(str, res_list);
         break;
@@ -558,5 +557,36 @@ const std::string Library::process_phrase(const char *str, bool buffer_out)
         }
     }
 
-    return outputer.get_content();;
+    return outputer.get_content();
+}
+const std::string Library::get_neighbour(const char *str, int offset, uint32_t length)
+{
+    std::list<std::string> neighbour;
+    if (nullptr == str || '\0' == str[0])
+        return "";
+
+    int32_t *icurr = (int32_t*)malloc(sizeof(int32_t) * ndicts());
+    const char *word;
+
+    poGetNextWord(str, icurr);
+    while (++offset <= 2) {
+        word = poGetPreWord(icurr);
+        if (!word)
+            break;
+    }
+    while (neighbour.size() < length) {
+        word = poGetNextWord(nullptr, icurr);
+        if (word)
+            neighbour.push_back(word);
+        else
+            break;
+    }
+    free(icurr);
+
+    std::string result;
+    for (const auto &e : neighbour) {
+        result += e + "\n";
+    }
+    result.resize(result.length() - 1);//delete last "\n"
+    return result;
 }

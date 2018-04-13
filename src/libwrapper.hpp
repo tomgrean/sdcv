@@ -29,23 +29,23 @@ public:
     {
     }
 
-    const std::string process_phrase(const char *loc_str, bool buffer_out);
+    const std::string process_phrase(const char *loc_str, bool all_data);
+    const std::string get_neighbour(const char *str, int offset, uint32_t length);
 
 private:
     class response_out final
     {
     public:
-        explicit response_out(const char *str, const Param_config &param, bool bufferout);
+        explicit response_out(const char *str, const Param_config &param, bool all_data);
         response_out(const response_out &) = delete;
         response_out &operator=(const response_out &) = delete;
-        ~response_out();
         response_out &operator <<(const std::string &content);
         std::string get_content();
         void print_search_result(TSearchResultList &res_list);
     private:
         const Param_config &param_;
-        bool bufferout_;
         std::string buffer;
+        bool all_data;
     };
     const std::map<std::string, std::string> bookname_to_ifo;
 
