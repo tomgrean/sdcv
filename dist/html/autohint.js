@@ -4,7 +4,7 @@ $(document).ready(function() {
 	var qword = $("#qwt");
 	var formobj = $("form");
 	qword.autocomplete({
-		autoFocus:true,
+		//autoFocus:true,
 		source:function(req, res) {
 			$.ajax({
 				url:"neigh",
@@ -28,6 +28,18 @@ $(document).ready(function() {
 			flag = true;
 		}
 	});
+	function loadcontent(cnt) {
+		dict_content.html(cnt);
+		$("a").click(function(e) {
+			if (this.href.indexOf("w=") >= 0) {
+				e.preventDefault();
+				var targetword = this.href.replace(/^.*w=([^&]+).*$/, "$1");
+				qword.val(decodeURI(targetword));
+				formobj.submit();
+			}
+		});
+		window.scrollTo(0,0);
+	}
 	formobj.on("submit", function(e) {
 		e.preventDefault();
 		console.log("query for word:" + qword.val());
@@ -37,10 +49,10 @@ $(document).ready(function() {
 			dataType:"html",
 			data:{"w":qword.val(),"co":"c"},
 			success:function(data) {
-				dict_content.html(data);
+				loadcontent(data);
 			},
 			error:function(d,txt) {
-				dict_content.text(txt);
+				loadcontent(txt);
 			}
 		});
 		return false;
