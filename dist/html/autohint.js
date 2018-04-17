@@ -42,7 +42,6 @@ $(document).ready(function() {
 	}
 	formobj.on("submit", function(e) {
 		e.preventDefault();
-		console.log("query for word:" + qword.val());
 		$.ajax({
 			url:".",
 			type:"GET",
