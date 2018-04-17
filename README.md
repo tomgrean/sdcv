@@ -5,10 +5,6 @@ cd /tmp/build-sdwv
 cmake path/to/source/code/of/sdwv
 make
 #+END_SRC
-if you enable nls then you should also type
-#+BEGIN_SRC sh
-make lang
-#+END_SRC
 ** to install type
 #+BEGIN_SRC sh
 make install
@@ -22,16 +18,7 @@ See sdwv man page for usage description.
 If you find bug reports it via email to tomgrean at github dot com. 
 Be sure to include the word "sdwv" somewhere in the "Subject:" field.
 
-* Notes to developer
-** make source code release
-#+BEGIN_SRC sh
-make package_source
-#+END_SRC
-** update translation
-#+BEGIN_SRC sh
-cd po
-xgettext -k_ ../src/*.cpp -o new.pot
-msgmerge -U sdwv.pot new.pot
-rm new.pot
-for i in `ls *.po`; do msgmerge -U $i sdwv.pot; done
-#+END_SRC
+* For use with AJAX support
+Copy the directory dist/html to the **dictionary path**(default is
+/usr/share/stardict/dic), so that all .css and .js assets are in
+/usr/share/stardict/dic/html/.
