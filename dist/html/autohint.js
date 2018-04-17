@@ -2,7 +2,7 @@ $(document).ready(function() {
 	var flag = false;
 	var dict_content = $("#dict_content");
 	var qword = $("#qwt");
-	var formobj = $("form");
+	var formobj = $("#qwFORM");
 	qword.autocomplete({
 		//autoFocus:true,
 		source:function(req, res) {

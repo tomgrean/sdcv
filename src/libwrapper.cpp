@@ -407,7 +407,7 @@ Library::response_out::response_out(const char *str, const Param_config &param, 
                 "</style>\n"
                 "<link href='html/jquery-ui.css' rel='stylesheet'>\n"
                 "</head><body>"
-                "<form action='/' method='GET'>"
+                "<form id='qwFORM' action='/' method='GET'>"
                 "<input id='qwt' type='text' name='w' class='ui-autocomplete-input' placeholder='input word' required='required' value='";
         std::string headerhtml2 = "'/>"
                 "<input type='submit' value='GO'/>"
