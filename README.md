@@ -23,7 +23,7 @@ StarDict supports many dict formats. While sdwv is focusing on HTML.
 3. text(code name 'm') is showed with basic HTML support.
 #### Dictionaries directory layout and ordering
 Actually there is only one rule for sdwv to find dictionaries in **dictionary path**: each dictionary has one unique file name but with different extentions. Using identical name in different directories will make a lot of confusion.
-For the sake of ease, one directory for one dictionary. The ordering depends on the full path of the dictionary file. rename the directory of each dictionary and prefix it with _01-_, _12-_, _32-_, etc. to make them ordered. For example:
+For the sake of ease, one directory for one dictionary. Besides the CLI -u option, the ordering depends on the full path of the dictionary file name. rename the directory of each dictionary and prefix it with _01-_, _12-_, _32-_, etc. to make them ordered. For example:
 ```
 $ find /usr/share/stardict/dic/ | sort | grep -v res
 /usr/share/stardict/dic/
