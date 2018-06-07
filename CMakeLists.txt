@@ -18,16 +18,16 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/compiler.cmake")
 set(ZLIB_FIND_REQUIRED True)
 include(FindZLIB)
 
-set(GLIB2_REQ "'glib-2.0 >= 2.6.1'")
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindGLIB2.cmake")
+#set(GLIB2_REQ "'glib-2.0 >= 2.6.1'")
+#set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+#include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindGLIB2.cmake")
 
-if (NOT GLIB2_FOUND)
-	message(FATAL_ERROR "sdwv require ${GLIB2_REQ}, "
-		"make sure that you install it")
-endif()
+#if (NOT GLIB2_FOUND)
+#	message(FATAL_ERROR "sdwv require ${GLIB2_REQ}, "
+#		"make sure that you install it")
+#endif()
 
-option(ENABLE_NLS "Enable NLS support" True)
+#option(ENABLE_NLS "Enable NLS support" True)
 
 set(sdwv_SRCS
   src/sdwv.cpp
@@ -45,23 +45,23 @@ set(sdwv_SRCS
   src/mapfile.hpp
 )
 
-if (ENABLE_NLS)
-  find_package(GettextTools REQUIRED)
-  set(gettext_stockDir "${CMAKE_CURRENT_SOURCE_DIR}/po")
-  set(gettext_langDir  "${CMAKE_CURRENT_BINARY_DIR}/lang")
-  set(gettext_outDir   "${CMAKE_CURRENT_BINARY_DIR}/locale")
-  set(GETTEXT_TRANSLATIONS_PATH "${CMAKE_INSTALL_PREFIX}/share/locale")
-  gettext_make_target("lang"
-    HIERARCHY "{1}/{2}/{3}/{4}.mo"
-    KEYWORDS  "_"
-    DOMAIN    "sdwv"
-    STOCK_DIR ${gettext_stockDir}
-    LANG_DIR  ${gettext_langDir}
-    OUT_DIR   ${gettext_outDir}
-    SOURCE    ${sdwv_SRCS})
-
-  list(APPEND makeCleanFiles ${gettext_outDir})
-endif ()
+#if (ENABLE_NLS)
+#  find_package(GettextTools REQUIRED)
+#  set(gettext_stockDir "${CMAKE_CURRENT_SOURCE_DIR}/po")
+#  set(gettext_langDir  "${CMAKE_CURRENT_BINARY_DIR}/lang")
+#  set(gettext_outDir   "${CMAKE_CURRENT_BINARY_DIR}/locale")
+#  set(GETTEXT_TRANSLATIONS_PATH "${CMAKE_INSTALL_PREFIX}/share/locale")
+#  gettext_make_target("lang"
+#    HIERARCHY "{1}/{2}/{3}/{4}.mo"
+#    KEYWORDS  "_"
+#    DOMAIN    "sdwv"
+#    STOCK_DIR ${gettext_stockDir}
+#    LANG_DIR  ${gettext_langDir}
+#    OUT_DIR   ${gettext_outDir}
+#    SOURCE    ${sdwv_SRCS})
+#
+#  list(APPEND makeCleanFiles ${gettext_outDir})
+#endif ()
 
 include(CheckFunctionExists)
 check_function_exists(mmap HAVE_MMAP)
@@ -73,9 +73,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake
 	${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 
+#${GLIB2_INCLUDE_DIRS}
 include_directories(
 	${ZLIB_INCLUDE_DIR}
-	${GLIB2_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/src/lib
 	${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -101,9 +101,9 @@ add_executable(sdwv ${sdwv_SRCS})
 target_link_libraries(sdwv
   ${ZLIB_LIBRARIES}
 )
-if (ENABLE_NLS)
-  set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "locale")
-endif ()
+#if (ENABLE_NLS)
+#  set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "locale")
+#endif ()
 
 include(CPack)
 
@@ -111,9 +111,9 @@ install(TARGETS sdwv DESTINATION "bin")
 install(FILES doc/sdwv.1 DESTINATION "share/man/man1")
 install(FILES doc/uk/sdwv.1 DESTINATION "share/man/uk/man1")
 
-if (ENABLE_NLS)
-  install(DIRECTORY "${gettext_outDir}" DESTINATION "share")
-endif ()
+#if (ENABLE_NLS)
+#  install(DIRECTORY "${gettext_outDir}" DESTINATION "share")
+#endif ()
 
 option(BUILD_TESTS "Enable automatic testing" False)
 
