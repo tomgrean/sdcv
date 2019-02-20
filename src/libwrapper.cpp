@@ -108,7 +108,7 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
     std::string res;
     const char *p = xstr;
     int tagFlag = 0;//1: kref. 2: rref.
-    std::vector<std::string> tokens;
+    std::map<const std::string, const std::string> tokens;
 
     for (; *p; ++p) {
         if (*p != '<') {
@@ -177,19 +177,32 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
         // extract tag name and attributes.
         const std::string delim(" \t");
         std::string::size_type tagstart = 0, tagend = 0;
-        std::string name(tag);
+        std::string name;
         tokens.clear();
-        while((tagend = tag.find_first_of(delim, tagstart)) != std::string::npos)
-        {
-            tokens.push_back(tag.substr(tagstart, tagend - tagstart));
+
+        auto extractKV = [&tokens, &name](const std::string &token) {
+            const std::string::size_type attrEQ = token.find_first_of('=');
+            if (attrEQ != std::string::npos) {
+                const std::string attrKey(token.substr(0, attrEQ));
+                const std::string attrVal(token.substr(attrEQ + 2, token.size() - attrEQ - 3));//delete quote
+                tokens.insert({attrKey, attrVal});
+            } else {
+                if (name.length() <= 0) {
+                    name = token;
+                }
+            }
+        };
+        while ((tagend = tag.find_first_of(delim, tagstart)) != std::string::npos) {
+            const std::string token(tag.substr(tagstart, tagend - tagstart));
+            extractKV(token);
             tagstart = tag.find_first_not_of(delim, tagend);
         }
-        if (tokens.size() > 0) {
-            name = tokens[0];
-            if (tagstart != std::string::npos)
-                tokens.push_back(tag.substr(tagstart));
+        if (tagstart != 0 && tagstart != std::string::npos) {
+            extractKV(tag.substr(tagstart));
         }
-
+        if (name.length() <= 0) {
+            name = tag;
+        }
 
         if (name == "k") {
             const char *begin = next;
@@ -204,25 +217,20 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
             } else if (name == "/abr") {
                 res += ESC_END;
             } else if (name == "kref") {
-                    if (tokens.size() > 1) {
-                        res += "<a ";
-                        for (unsigned int i = 1; i < tokens.size(); ++i) {
-                            std::string::size_type attrEQ = tokens[i].find_first_of('=');
-                            if (attrEQ != std::string::npos) {
-                                const std::string attrKey(tokens[i].substr(0, attrEQ));
-                                const std::string attrVal(tokens[i].substr(attrEQ + 2, tokens[i].size() - attrEQ - 3));//delete quote
-                                if (attrKey == "k") {
-                                    res += ("href='?w=" + attrVal + "' ");
-                                } else {
-                                    res += (attrKey + "='" + attrVal + "' ");
-                                }
-                            }
+                if (tokens.size() > 0) {
+                    res += "<a";
+                    for (auto it : tokens) {
+                        if (it.first == "k") {
+                            res += (" href='?w=" + it.second + "'");
+                        } else {
+                            res += (" " + it.first + "='" + it.second + "'");
                         }
-                        res += ">";
-                    } else {
-                        res += "<a href='?w=";
-                        tagFlag = 1;//kref | a href
                     }
+                    res += ">";
+                } else {
+                    res += "<a href='?w=";
+                    tagFlag = 1;//kref | a href
+                }
             } else if (name == "/kref") {
                     res += "</a>";
             } else if (name == "rref") {
@@ -247,18 +255,22 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
                 res += EXAMPLE_VISFMT;
             } else if (name == "/ex") {
                 res += ESC_END;
-            } else if (!name.empty() && name[0] == 'c' && name != "co") {
-                std::string::size_type pos = name.find('=');
-                if (pos != std::string::npos) {
-                    pos += 2;
-                    std::string::size_type end_pos = name.find('\"', pos);
-                    const std::string color(name, pos, end_pos - pos);
-                    res += "<font color='" + color + "'>";
+            } else if (name == "c") {
+                if (tokens.size() > 0) {
+                    res += "<font color='" + tokens["c"] + "'>";
                 } else {
                     res += ESC_GREEN;
                 }
             } else if (name == "/c") {
                 res += ESC_END;
+            } else if (name == "sub") {
+                res += "<sub>";
+            } else if (name == "/sub") {
+                res += "</sub>";
+            } else if (name == "sup") {
+                res += "<sup>";
+            } else if (name == "/sup") {
+                res += "</sup>";
             }
         } else {
             if (name == "tr") {
