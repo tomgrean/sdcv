@@ -210,7 +210,9 @@ int main(int argc, char *argv[]) try {
             std::string result = lib->get_neighbour(req.get_param_value("w").c_str(), offset, length);
             res.set_content(result, "text/plain");
         });
-        serv.listen("0.0.0.0", param.listen_port);
+        if (!serv.listen("0.0.0.0", param.listen_port)) {
+            puts("start HTTP failed!");
+        }
     } else if (optind < argc) {
         for (int i = optind; i < argc; ++i)
             if (lib->process_phrase(argv[i], true).length() <= 0) {
@@ -222,7 +224,7 @@ int main(int argc, char *argv[]) try {
     }
     return EXIT_SUCCESS;
 } catch (const std::exception &ex) {
-    exit(120);
+    exit(10);
 }
 static std::unique_ptr<Library> prepare(Param_config &param)
 {

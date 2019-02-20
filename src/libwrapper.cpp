@@ -108,6 +108,8 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
     std::string res;
     const char *p = xstr;
     int tagFlag = 0;//1: kref. 2: rref.
+    std::vector<std::string> tokens;
+
     for (; *p; ++p) {
         if (*p != '<') {
             if (tagFlag == 1) {//kref | a href
@@ -171,7 +173,23 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
         if (!next)
             continue;
 
-        const std::string name(p + 1, next - p - 1);
+        std::string tag(p + 1, next - p - 1);
+        // extract tag name and attributes.
+        const std::string delim(" \t");
+        std::string::size_type tagstart = 0, tagend = 0;
+        std::string name(tag);
+        tokens.clear();
+        while((tagend = tag.find_first_of(delim, tagstart)) != std::string::npos)
+        {
+            tokens.push_back(tag.substr(tagstart, tagend - tagstart));
+            tagstart = tag.find_first_not_of(delim, tagend);
+        }
+        if (tokens.size() > 0) {
+            name = tokens[0];
+            if (tagstart != std::string::npos)
+                tokens.push_back(tag.substr(tagstart));
+        }
+
 
         if (name == "k") {
             const char *begin = next;
@@ -186,8 +204,25 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
             } else if (name == "/abr") {
                 res += ESC_END;
             } else if (name == "kref") {
-                    res += "<a href='?w=";
-                    tagFlag = 1;//kref | a href
+                    if (tokens.size() > 1) {
+                        res += "<a ";
+                        for (unsigned int i = 1; i < tokens.size(); ++i) {
+                            std::string::size_type attrEQ = tokens[i].find_first_of('=');
+                            if (attrEQ != std::string::npos) {
+                                const std::string attrKey(tokens[i].substr(0, attrEQ));
+                                const std::string attrVal(tokens[i].substr(attrEQ + 2, tokens[i].size() - attrEQ - 3));//delete quote
+                                if (attrKey == "k") {
+                                    res += ("href='?w=" + attrVal + "' ");
+                                } else {
+                                    res += (attrKey + "='" + attrVal + "' ");
+                                }
+                            }
+                        }
+                        res += ">";
+                    } else {
+                        res += "<a href='?w=";
+                        tagFlag = 1;//kref | a href
+                    }
             } else if (name == "/kref") {
                     res += "</a>";
             } else if (name == "rref") {
