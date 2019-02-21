@@ -1,3 +1,4 @@
+* This branch is falling behind. use "embeded" branch instread.
 * Introduction
 sdwv is base on http://sdcv.sourceforge.net and using https://github.com/yhirose/cpp-httplib
 to make a HTTP server.
