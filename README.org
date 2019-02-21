@@ -1,4 +1,4 @@
-* This branch is falling behind. use "embeded" branch instread.
+* This branch is falling behind. Use "embeded" branch instead.
 * Introduction
 sdwv is base on http://dushistov.github.io/sdcv and using https://github.com/yhirose/cpp-httplib
 to make a HTTP server.
