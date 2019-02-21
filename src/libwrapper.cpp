@@ -110,6 +110,7 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
     int tagFlag = 0;//1: kref. 2: rref.
     std::map<const std::string, const std::string> tokens;
 
+    res.reserve(1024);
     for (; *p; ++p) {
         if (*p != '<') {
             if (tagFlag == 1) {//kref | a href
@@ -185,7 +186,7 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
             if (attrEQ != std::string::npos) {
                 const std::string attrKey(token.substr(0, attrEQ));
                 const std::string attrVal(token.substr(attrEQ + 2, token.size() - attrEQ - 3));//delete quote
-                tokens.insert({attrKey, attrVal});
+                tokens.emplace(attrKey, attrVal);
             } else {
                 if (name.length() <= 0) {
                     name = token;
@@ -219,12 +220,18 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
             } else if (name == "kref") {
                 if (tokens.size() > 0) {
                     res += "<a";
-                    for (auto it : tokens) {
+                    for (const auto &it : tokens) {
                         if (it.first == "k") {
-                            res += (" href='?w=" + it.second + "'");
+                            res += " href='?w=";
+                            res += it.second;
                         } else {
-                            res += (" " + it.first + "='" + it.second + "'");
+                            res += ' ';
+                            res += it.first;
+                            res += '=';
+                            res += '\'';
+                            res += it.second;;
                         }
+                        res += '\'';
                     }
                     res += ">";
                 } else {
@@ -256,8 +263,11 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
             } else if (name == "/ex") {
                 res += ESC_END;
             } else if (name == "c") {
-                if (tokens.size() > 0) {
-                    res += "<font color='" + tokens["c"] + "'>";
+                const auto it = tokens.find("c");
+                if (it != tokens.end()) {
+                    res += "<font color='";
+                    res += it->second;
+                    res += "'>";
                 } else {
                     res += ESC_GREEN;
                 }
