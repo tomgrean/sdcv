@@ -33,6 +33,7 @@
 #include <string>
 #include <vector>
 #include <getopt.h>
+#include <unistd.h>
 
 #include "libwrapper.hpp"
 #include "utils.hpp"
@@ -226,6 +227,7 @@ int main(int argc, char *argv[]) try {
 } catch (const std::exception &ex) {
     exit(10);
 }
+
 static std::unique_ptr<Library> prepare(Param_config &param)
 {
     const char *stardict_data_dir = getenv("STARDICT_DATA_DIR");
@@ -298,7 +300,9 @@ static std::unique_ptr<Library> prepare(Param_config &param)
         }
     }
 
-    std::unique_ptr<Library> lib(new Library(param, bookname_to_ifo));
+	std::string ffile(data_dir);
+	ffile += "/format.conf";
+    std::unique_ptr<Library> lib(new Library(param, bookname_to_ifo, ffile.c_str()));
     lib->load(dicts_dir_list, order_list, disable_list);
     return lib;
 }

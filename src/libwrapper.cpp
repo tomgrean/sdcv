@@ -25,6 +25,7 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <unordered_map>
 #include <memory>
 
 #include "utils.hpp"
@@ -33,20 +34,21 @@
 
 //static const char ESC_BLUE[] = "<font color='blue'>";
 static const char ESC_END[] = "</font>";
-static const char ESC_END_B[] = "</b>";
-static const char ESC_END_I[] = "</i>";
-//static const char ESC_END_U[] = "</u>";
-static const char ESC_BOLD[] = "<b>";
-//static const char ESC_UNDERLINE[] = "<u>";
-static const char ESC_ITALIC[] = "<i>";
-static const char ESC_LIGHT_GRAY[] = "<font color='gray'>";
+//static const char ESC_END_B[] = "</b>";
+//static const char ESC_END_I[] = "</i>";
+////static const char ESC_END_U[] = "</u>";
+//static const char ESC_BOLD[] = "<b>";
+////static const char ESC_UNDERLINE[] = "<u>";
+//static const char ESC_ITALIC[] = "<i>";
+//static const char ESC_LIGHT_GRAY[] = "<font color='gray'>";
 static const char ESC_BROWN[] = "<font color='brown'>";
-static const char ESC_GREEN[] = "<font color='green'>";
-
+//static const char ESC_GREEN[] = "<font color='green'>";
+//
+//static const char *EXAMPLE_VISFMT = ESC_LIGHT_GRAY;
+//static const char *ABR_VISFMT = ESC_GREEN;
 static const char *TRANSCRIPTION_VISFMT = ESC_BROWN;
-static const char *EXAMPLE_VISFMT = ESC_LIGHT_GRAY;
-static const char *ABR_VISFMT = ESC_GREEN;
 
+#if 0
 static std::string htmlredirect(const char *str, uint32_t &sec_size)
 {
     std::string res;
@@ -70,6 +72,7 @@ static std::string htmlredirect(const char *str, uint32_t &sec_size)
     sec_size = p - str;
     return res;
 }
+
 static std::string text2simplehtml(const char *str, uint32_t &sec_size)
 {
     std::string res;
@@ -295,8 +298,8 @@ static std::string xdxf2text(const CBook_it &dictname, const char *xstr, bool co
     sec_size = p - xstr;
     return res;
 }
-
-static std::string parse_data(const CBook_it &dictname, const char *data, bool colorize_output)
+#endif
+std::string Library::parse_data(const CBook_it &dictname, const char *data, bool colorize_output)
 {
     if (!data)
         return "";
@@ -310,30 +313,19 @@ static std::string parse_data(const CBook_it &dictname, const char *data, bool c
         sec_size = 0;
         switch (*p++) {
         case 'h': // HTML data
-            if (*p) {
-                //res += '\n';
-                res += htmlredirect(p, sec_size);
-            }
-            sec_size++;
-            break;
         case 'w': // WikiMedia markup data
         case 'm': // plain text, utf-8
         case 'l': // not utf-8, some other locale encoding, discouraged, need more work...
+        case 'g': // pango markup data
+        case 'x': // xdxf
             if (*p) {
                 if (colorize_output) {
-                    res += text2simplehtml(p, sec_size);
+                	res += outputTemplate.generate(dictname, p, *(p-1), sec_size);
                 } else {
                     sec_size = res.length();
                     res += p;
                     sec_size = res.length() - sec_size;
                 }
-            }
-            sec_size++;
-            break;
-        case 'g': // pango markup data
-        case 'x': // xdxf
-            if (*p) {
-                res += xdxf2text(dictname, p, colorize_output, sec_size);
             }
             sec_size++;
             break;
@@ -640,4 +632,134 @@ const std::string Library::get_neighbour(const char *str, int offset, uint32_t l
     }
     result.resize(result.length() - 1);//delete last "\n"
     return result;
+}
+void CustomAction::constructString(char *str, bool isFrom) {
+	std::list<VarString> *target;
+	char *varstart, *varend;
+
+	if (isFrom) {
+		target = &from;
+	} else {
+		target = &to;
+	}
+	while (str && *str) {
+		varstart = strstr(str, "{{");
+		if (nullptr == varstart) {
+			target->push_back(VarString(str, 0));
+			return;
+		}
+		*varstart = '\0';
+		varstart += 2;
+		if (varstart > str) {
+			target->push_back(VarString(str, 0));
+		}
+		varend = strstr(varstart, "}}");
+		if (nullptr == varend) {
+			printf("ERROR parsing %s\n", varstart);
+			return;
+		}
+		*varend = '\0';
+		target->push_back(VarString(varstart, 1));
+		str = varend + 2;
+	}
+}
+std::string CustomTemplate::generate(const CBook_it &dictname, const char *xstr, char sametypesequence, uint32_t &sec_size) {
+	std::string res(xstr);
+	sec_size = res.length();
+	const auto &rep = customRep.find(sametypesequence);
+	if (rep != customRep.end()) {
+		std::string path(dictname->second);
+		std::string::size_type sepend = path.rfind(G_DIR_SEPARATOR);
+		if (sepend != std::string::npos) {
+			path = path.substr(0, sepend);
+		}
+		const std::map<std::string, std::string> parametermap{
+			{"DICT_NAME", dictname->first},
+			{"DICT_PATH", path}
+		};
+		for (const auto &it : rep->second) {
+			it->replaceAll(res, parametermap);
+		}
+	}
+	return res;
+}
+CustomTemplate::CustomTemplate(const char *fileName) {
+	char *content = g_file_get_contents(fileName);
+	// file format
+	// dict type declaration:
+	// :{{sametypesequence}}
+	// plain text replace:
+	// x=y
+	// regex replace:
+	// x~=y
+	// both x and y can contain VARIABLEs
+	if (content) {
+		char sametypesequence = 'm';
+		char *savep;
+		char *p;
+
+		p = strtok_r(content, "\n\r", &savep);
+		while (p) {
+			if ('#' == *p) {
+				p = strtok_r(NULL, "\n\r", &savep);
+				continue;
+			}
+			char *eq = nullptr;
+			char regexFlag = 0;
+			// first get '=' position
+			char *pstart = p, *pend = p;
+			for (; *pend; ++pstart, ++pend) {
+				if (*pend == '\\') {
+					++pend;
+					switch (*pend) {
+					case 'n':
+						*pstart = '\n';
+						break;
+					case 't':
+						*pstart = '\t';
+						break;
+					case 'r':
+						*pstart = '\r';
+						break;
+					default:
+						*pstart = *pend;
+						break;
+					}
+				} else if (pend[0] == '~' && pend[1] == '=' && !eq) {
+					regexFlag = 1;
+					*pstart = '\0';
+					++pend;
+					eq = pstart + 1;
+				} else if (*pend == '=' && !eq) {
+					*pstart = '\0';
+					eq = pstart + 1;
+				} else if (pstart != pend)
+					*pstart = *pend;
+			}
+			if (pstart != pend)
+				*pstart = *pend;
+
+			if (nullptr == eq) {
+				if (':' == *p) {
+					sametypesequence = *++p;
+				}
+				//skip other lines.
+			} else {
+				auto it = customRep.find(sametypesequence);
+				if (it == customRep.end()) {
+					auto pair = customRep.emplace(sametypesequence, CustomType());
+					it = pair.first;
+				}
+
+				if (regexFlag) {
+					//regex
+					it->second.push_back(std::unique_ptr<CustomAction>(new CustomActRegex(p, eq)));
+				} else {
+					it->second.push_back(std::unique_ptr<CustomAction>(new CustomActText(p, eq)));
+				}
+			}
+			p = strtok_r(NULL, "\n\r", &savep);
+		}
+	}
+	free(content);
 }
