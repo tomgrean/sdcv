@@ -762,11 +762,7 @@ TransformatTemplate::TransformatTemplate(const char *fileName) {
                     break;
                 case '~':
                     //regex
-                    try {
-                        transact = (new TransActRegex(p, eq));
-                    } catch (const std::regex_error &) {
-                        printf("Regex error:%s~%s\n", p, eq);
-                    }
+                    transact = (new TransActRegex(p, eq));
                     break;
                 }
                 if (transact != nullptr)

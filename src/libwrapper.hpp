@@ -26,9 +26,10 @@ using CBook_it = std::map<std::string, std::string>::const_iterator;
 //{{DICT_PATH}} CBook_it->second
 class VarString {
 public:
-    VarString(std::string s, char f):str(s),flag(f) {
+    explicit VarString(std::string s, char f):str(s),flag(f) {
         //printf("creating varStr: %d, %s\n", flag, str.c_str());
     }
+    VarString(VarString &) = delete;
     VarString(VarString &&other):str(std::move(other.str)),flag(other.flag) {
         //printf("CREATING varStr: %d, %s\n", flag, str.c_str());
     }
@@ -44,6 +45,9 @@ public:
 };
 class TransAction {
 public:
+    explicit TransAction(){}
+    TransAction(TransAction&) = delete;
+    TransAction(TransAction&&) = delete;
     virtual ~TransAction(){}
     virtual void replaceAll(std::string &input, const std::map<std::string, std::string>&params) = 0;
 protected:
@@ -80,28 +84,45 @@ public:
     TransActRegex(char *f, char *t) {
         constructString(f, true);
         constructString(t, false);
+        if (from.size() == 1 && from.front().flag == 0) {
+            const std::string &str = from.front().str;
+            try {
+                re.reset(new std::regex(str));
+            } catch (const std::regex_error &) {
+                printf("Regex error1:%s\n", str.c_str());
+                exit(2);
+            }
+        }
     }
     void replaceAll(std::string &input, const std::map<std::string, std::string>&params) override {
         std::string f = genFormatText(from, params);
         std::string t = genFormatText(to, params);
-        input = std::regex_replace(input, std::regex(f), t);
+        if (re != nullptr)
+            input = std::regex_replace(input, *re, t);
+        else try {
+            input = std::regex_replace(input, std::regex(f), t);
+        } catch (const std::regex_error &) {
+            printf("Regex error2:%s\n", f.c_str());
+            // do not exit when running.
+        }
     }
+private:
+    std::unique_ptr<std::regex> re;
 };
 
 class TransformatTemplate {
 public:
     explicit TransformatTemplate(const char *fileName);
+    TransformatTemplate(TransformatTemplate&) = delete;
     TransformatTemplate(TransformatTemplate&&other):customRep(std::move(other.customRep)) {}
     std::string generate(const CBook_it &dictname, const char *xstr, char sametypesequence, uint32_t &sec_size);
 private:
-    TransformatTemplate(TransformatTemplate&) = delete;
     std::map<char, CustomType> customRep;
 };
 
 //this class is wrapper around Dicts class for easy use
 //of it
-class Library : public Libs
-{
+class Library : public Libs {
 public:
     Library(const Param_config &param, const std::map<std::string, std::string> & bookname2ifo, const char *tconf)
         : Libs(param), bookname_to_ifo(bookname2ifo), outputTemplate(tconf)
