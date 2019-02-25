@@ -300,8 +300,8 @@ static std::unique_ptr<Library> prepare(Param_config &param)
         }
     }
 
-	std::string ffile(data_dir);
-	ffile += "/format.conf";
+    std::string ffile(data_dir);
+    ffile += "/format.conf";
     std::unique_ptr<Library> lib(new Library(param, bookname_to_ifo, ffile.c_str()));
     lib->load(dicts_dir_list, order_list, disable_list);
     return lib;

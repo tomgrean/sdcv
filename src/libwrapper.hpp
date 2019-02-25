@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <cctype>
 
 #include "stardict_lib.hpp"
 #include "utils.hpp"
@@ -25,83 +26,76 @@ using CBook_it = std::map<std::string, std::string>::const_iterator;
 //{{DICT_PATH}} CBook_it->second
 class VarString {
 public:
-	VarString(std::string s, char f):str(s),flag(f) {
-		//printf("creating varStr: %d, %s\n", flag, str.c_str());
-	}
-	VarString(VarString &&other):str(std::move(other.str)),flag(other.flag) {
-		//printf("CREATING varStr: %d, %s\n", flag, str.c_str());
-	}
-	const std::string toString(const std::map<std::string, std::string>&params) const {
-		if (flag) {
-			const auto it = params.find(str);
-			return it != params.end() ? it->second : "";
-		}
-		return str;
-	}
-private:
-	std::string str;
-	char flag;//0:string, 1:variable
+    VarString(std::string s, char f):str(s),flag(f) {
+        //printf("creating varStr: %d, %s\n", flag, str.c_str());
+    }
+    VarString(VarString &&other):str(std::move(other.str)),flag(other.flag) {
+        //printf("CREATING varStr: %d, %s\n", flag, str.c_str());
+    }
+    const std::string toString(const std::map<std::string, std::string>&params) const {
+        if (flag) {
+            const auto it = params.find(str);
+            return it != params.end() ? it->second : "";
+        }
+        return str;
+    }
+    const std::string str;
+    const char flag;//0:string, 1:variable
 };
-class CustomAction {
+class TransAction {
 public:
-	virtual ~CustomAction(){}
-	virtual void replaceAll(std::string &input, const std::map<std::string, std::string>&params) = 0;
+    virtual ~TransAction(){}
+    virtual void replaceAll(std::string &input, const std::map<std::string, std::string>&params) = 0;
 protected:
-	inline std::string getToText(const std::map<std::string, std::string>&params) {
-		return genFormatText(to, params);
-	}
-	inline std::string getFromText(const std::map<std::string, std::string>&params) {
-		return genFormatText(from, params);
-	}
-	void constructString(char *str, bool isFrom);
-private:
-	static std::string genFormatText(const std::list<VarString> &strs, const std::map<std::string, std::string>&params) {
-		std::string result;
-		for (const auto &it : strs) {
-			result += it.toString(params);
-		}
-		return result;
-	}
-	std::list<VarString> from, to;
+    void constructString(char *str, bool isFrom);
+    static std::string genFormatText(const std::list<VarString> &strs, const std::map<std::string, std::string>&params) {
+        std::string result;
+        for (const auto &it : strs) {
+            result += it.toString(params);
+        }
+        return result;
+    }
+    std::list<VarString> from, to;
 };
-using CustomType = std::vector<std::unique_ptr<CustomAction>>;
+using CustomType = std::vector<std::unique_ptr<TransAction>>;
 
-class CustomActText: public CustomAction {
+class TransActText: public TransAction {
 public:
-	CustomActText(char *f, char *t) {
-		constructString(f, true);
-		constructString(t, false);
-	}
-	void replaceAll(std::string &input, const std::map<std::string, std::string>&params) override {
-		std::string f = getFromText(params);
-		std::string t = getToText(params);
-		std::string::size_type fpos;
-		while ((fpos = input.find(f)) != std::string::npos) {
-			input.replace(fpos, f.length(), t);
-		}
-	}
+    TransActText(char *f, char *t) {
+        constructString(f, true);
+        constructString(t, false);
+    }
+    void replaceAll(std::string &input, const std::map<std::string, std::string>&params) override {
+        std::string f = genFormatText(from, params);
+        std::string t = genFormatText(to, params);
+        std::string::size_type fpos = 0;
+        while ((fpos = input.find(f, fpos)) != std::string::npos) {
+            input.replace(fpos, f.length(), t);
+            fpos += t.length();
+        }
+    }
 };
-class CustomActRegex: public CustomAction {
+class TransActRegex: public TransAction {
 public:
-	CustomActRegex(char *f, char *t) {
-		constructString(f, true);
-		constructString(t, false);
-	}
-	void replaceAll(std::string &input, const std::map<std::string, std::string>&params) override {
-		std::string f = getFromText(params);
-		std::string t = getToText(params);
-		input = std::regex_replace(input, std::regex(f), t);
-	}
+    TransActRegex(char *f, char *t) {
+        constructString(f, true);
+        constructString(t, false);
+    }
+    void replaceAll(std::string &input, const std::map<std::string, std::string>&params) override {
+        std::string f = genFormatText(from, params);
+        std::string t = genFormatText(to, params);
+        input = std::regex_replace(input, std::regex(f), t);
+    }
 };
 
-class CustomTemplate {
+class TransformatTemplate {
 public:
-	explicit CustomTemplate(const char *fileName);
-	CustomTemplate(CustomTemplate&&other):customRep(std::move(other.customRep)) {}
-	std::string generate(const CBook_it &dictname, const char *xstr, char sametypesequence, uint32_t &sec_size);
+    explicit TransformatTemplate(const char *fileName);
+    TransformatTemplate(TransformatTemplate&&other):customRep(std::move(other.customRep)) {}
+    std::string generate(const CBook_it &dictname, const char *xstr, char sametypesequence, uint32_t &sec_size);
 private:
-	CustomTemplate(CustomTemplate&) = delete;
-	std::map<char, CustomType> customRep;
+    TransformatTemplate(TransformatTemplate&) = delete;
+    std::map<char, CustomType> customRep;
 };
 
 //this class is wrapper around Dicts class for easy use
@@ -133,7 +127,7 @@ private:
         bool all_data;
     };
     const std::map<std::string, std::string> bookname_to_ifo;
-    CustomTemplate outputTemplate;
+    TransformatTemplate outputTemplate;
 
     void SimpleLookup(const std::string &str, TSearchResultList &res_list);
     void LookupWithFuzzy(const std::string &str, TSearchResultList &res_list);

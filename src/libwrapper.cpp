@@ -310,8 +310,9 @@ std::string Library::parse_data(const CBook_it &dictname, const char *data, bool
     data_size = get_uint32(p);
     p += sizeof(uint32_t);
     while (uint32_t(p - data) < data_size) {
+        const char t = *p++;
         sec_size = 0;
-        switch (*p++) {
+        switch (t) {
         case 'h': // HTML data
         case 'w': // WikiMedia markup data
         case 'm': // plain text, utf-8
@@ -320,7 +321,7 @@ std::string Library::parse_data(const CBook_it &dictname, const char *data, bool
         case 'x': // xdxf
             if (*p) {
                 if (colorize_output) {
-                	res += outputTemplate.generate(dictname, p, *(p-1), sec_size);
+                    res += outputTemplate.generate(dictname, p, t, sec_size);
                 } else {
                     sec_size = res.length();
                     res += p;
@@ -633,133 +634,145 @@ const std::string Library::get_neighbour(const char *str, int offset, uint32_t l
     result.resize(result.length() - 1);//delete last "\n"
     return result;
 }
-void CustomAction::constructString(char *str, bool isFrom) {
-	std::list<VarString> *target;
-	char *varstart, *varend;
+void TransAction::constructString(char *str, bool isFrom) {
+    std::list<VarString> *target;
+    char *varstart, *varend;
 
-	if (isFrom) {
-		target = &from;
-	} else {
-		target = &to;
-	}
-	while (str && *str) {
-		varstart = strstr(str, "{{");
-		if (nullptr == varstart) {
-			target->push_back(VarString(str, 0));
-			return;
-		}
-		*varstart = '\0';
-		varstart += 2;
-		if (varstart > str) {
-			target->push_back(VarString(str, 0));
-		}
-		varend = strstr(varstart, "}}");
-		if (nullptr == varend) {
-			printf("ERROR parsing %s\n", varstart);
-			return;
-		}
-		*varend = '\0';
-		target->push_back(VarString(varstart, 1));
-		str = varend + 2;
-	}
+    if (isFrom) {
+        target = &from;
+    } else {
+        target = &to;
+    }
+    while (str && *str) {
+        varstart = strstr(str, "{{");
+        if (nullptr == varstart) {
+            target->push_back(VarString(str, 0));
+            return;
+        }
+        *varstart = '\0';
+        varstart += 2;
+        if (varstart > str) {
+            target->push_back(VarString(str, 0));
+        }
+        varend = strstr(varstart, "}}");
+        if (nullptr == varend) {
+            printf("ERROR parsing %s\n", varstart);
+            return;
+        }
+        *varend = '\0';
+        target->push_back(VarString(varstart, 1));
+        str = varend + 2;
+    }
 }
-std::string CustomTemplate::generate(const CBook_it &dictname, const char *xstr, char sametypesequence, uint32_t &sec_size) {
-	std::string res(xstr);
-	sec_size = res.length();
-	const auto &rep = customRep.find(sametypesequence);
-	if (rep != customRep.end()) {
-		std::string path(dictname->second);
-		std::string::size_type sepend = path.rfind(G_DIR_SEPARATOR);
-		if (sepend != std::string::npos) {
-			path = path.substr(0, sepend);
-		}
-		const std::map<std::string, std::string> parametermap{
-			{"DICT_NAME", dictname->first},
-			{"DICT_PATH", path}
-		};
-		for (const auto &it : rep->second) {
-			it->replaceAll(res, parametermap);
-		}
-	}
-	return res;
+std::string TransformatTemplate::generate(const CBook_it &dictname, const char *xstr, char sametypesequence, uint32_t &sec_size) {
+    std::string res(xstr);
+    sec_size = res.length();
+    const std::map<char, CustomType>::const_iterator rep = customRep.find(sametypesequence);
+    if (rep != customRep.end()) {
+        std::string path(dictname->second);
+        std::string::size_type sepend = path.rfind(G_DIR_SEPARATOR);
+        if (sepend != std::string::npos) {
+            path = path.substr(0, sepend);
+        }
+        const std::map<std::string, std::string> parametermap{
+            {"DICT_NAME", dictname->first},
+            {"DICT_PATH", path}
+        };
+        for (const auto &it : rep->second) {
+            it->replaceAll(res, parametermap);
+        }
+    }
+    return res;
 }
-CustomTemplate::CustomTemplate(const char *fileName) {
-	char *content = g_file_get_contents(fileName);
-	// file format
-	// dict type declaration:
-	// :{{sametypesequence}}
-	// plain text replace:
-	// x=y
-	// regex replace:
-	// x~=y
-	// both x and y can contain VARIABLEs
-	if (content) {
-		char sametypesequence = 'm';
-		char *savep;
-		char *p;
+TransformatTemplate::TransformatTemplate(const char *fileName) {
+    char *content = g_file_get_contents(fileName);
+    // file format
+    // dict type declaration:
+    // :{{sametypesequence}}
+    // plain text replace:
+    // x=y
+    // regular expression replace:
+    // x~y
+    // both x and y can contain VARIABLEs
+    if (content) {
+        char sametypesequence = 'm';
+        char *savep;
+        char *p;
 
-		p = strtok_r(content, "\n\r", &savep);
-		while (p) {
-			if ('#' == *p) {
-				p = strtok_r(NULL, "\n\r", &savep);
-				continue;
-			}
-			char *eq = nullptr;
-			char regexFlag = 0;
-			// first get '=' position
-			char *pstart = p, *pend = p;
-			for (; *pend; ++pstart, ++pend) {
-				if (*pend == '\\') {
-					++pend;
-					switch (*pend) {
-					case 'n':
-						*pstart = '\n';
-						break;
-					case 't':
-						*pstart = '\t';
-						break;
-					case 'r':
-						*pstart = '\r';
-						break;
-					default:
-						*pstart = *pend;
-						break;
-					}
-				} else if (pend[0] == '~' && pend[1] == '=' && !eq) {
-					regexFlag = 1;
-					*pstart = '\0';
-					++pend;
-					eq = pstart + 1;
-				} else if (*pend == '=' && !eq) {
-					*pstart = '\0';
-					eq = pstart + 1;
-				} else if (pstart != pend)
-					*pstart = *pend;
-			}
-			if (pstart != pend)
-				*pstart = *pend;
+        for (p = strtok_r(content, "\n\r", &savep); p; p = strtok_r(NULL, "\n\r", &savep)) {
+            if ('#' == *p) {
+                continue;
+            } else if (':' == *p) {
+                sametypesequence = *++p;
+                continue;
+            }
+            char *eq = nullptr;
+            char exprFlag = 0;//the operator char.
+            // first get '=' position
+            char *pstart = p, *pend = p;
+            for (; *pend; ++pstart, ++pend) {
+                if (*pend == '\\') {
+                    ++pend;
+                    switch (*pend) {
+                    case 'n':
+                        *pstart = '\n';
+                        break;
+                    case 't':
+                        *pstart = '\t';
+                        break;
+                    case 'r':
+                        *pstart = '\r';
+                        break;
+                    default:
+                        *pstart = *pend;
+                        break;
+                    }
+                } else if (!eq) {
+                    switch (*pend) {
+                    case '=':
+                        exprFlag = *pend;
+                        *pstart = '\0';
+                        eq = pstart + 1;
+                        break;
+                    case '~':
+                        exprFlag = *pend;
+                        *pstart = '\0';
+                        eq = pstart + 1;
+                        break;
+                    default:
+                        *pstart = *pend;
+                        break;
+                    }
+                } else if (pstart != pend)
+                    *pstart = *pend;
+            }
+            if (pstart != pend)
+                *pstart = *pend;
 
-			if (nullptr == eq) {
-				if (':' == *p) {
-					sametypesequence = *++p;
-				}
-				//skip other lines.
-			} else {
-				auto it = customRep.find(sametypesequence);
-				if (it == customRep.end()) {
-					auto pair = customRep.emplace(sametypesequence, CustomType());
-					it = pair.first;
-				}
-
-				if (regexFlag) {
-					//regex
-					it->second.push_back(std::unique_ptr<CustomAction>(new CustomActRegex(p, eq)));
-				} else {
-					it->second.push_back(std::unique_ptr<CustomAction>(new CustomActText(p, eq)));
-				}
-			}
-			p = strtok_r(NULL, "\n\r", &savep);
-		}
-	}
-	free(content);
+            if (eq) {
+                auto it = customRep.find(sametypesequence);
+                if (it == customRep.end()) {
+                    auto pair = customRep.emplace(sametypesequence, CustomType());
+                    it = pair.first;
+                }
+                TransAction *transact(nullptr);
+                switch (exprFlag) {
+                case '=':
+                    transact = (new TransActText(p, eq));
+                    break;
+                case '~':
+                    //regex
+                    try {
+                        transact = (new TransActRegex(p, eq));
+                    } catch (const std::regex_error &) {
+                        printf("Regex error:%s~%s\n", p, eq);
+                    }
+                    break;
+                }
+                if (transact != nullptr)
+                    it->second.push_back(std::unique_ptr<TransAction>(transact));
+            }
+        }
+    }
+    free(content);
 }
