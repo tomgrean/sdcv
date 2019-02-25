@@ -33,7 +33,7 @@
 #include "libwrapper.hpp"
 
 //static const char ESC_BLUE[] = "<font color='blue'>";
-static const char ESC_END[] = "</font>";
+//static const char ESC_END[] = "</font>";
 //static const char ESC_END_B[] = "</b>";
 //static const char ESC_END_I[] = "</i>";
 ////static const char ESC_END_U[] = "</u>";
@@ -41,12 +41,12 @@ static const char ESC_END[] = "</font>";
 ////static const char ESC_UNDERLINE[] = "<u>";
 //static const char ESC_ITALIC[] = "<i>";
 //static const char ESC_LIGHT_GRAY[] = "<font color='gray'>";
-static const char ESC_BROWN[] = "<font color='brown'>";
+//static const char ESC_BROWN[] = "<font color='brown'>";
 //static const char ESC_GREEN[] = "<font color='green'>";
 //
 //static const char *EXAMPLE_VISFMT = ESC_LIGHT_GRAY;
 //static const char *ABR_VISFMT = ESC_GREEN;
-static const char *TRANSCRIPTION_VISFMT = ESC_BROWN;
+//static const char *TRANSCRIPTION_VISFMT = ESC_BROWN;
 
 #if 0
 static std::string htmlredirect(const char *str, uint32_t &sec_size)
@@ -319,6 +319,12 @@ std::string Library::parse_data(const CBook_it &dictname, const char *data, bool
         case 'l': // not utf-8, some other locale encoding, discouraged, need more work...
         case 'g': // pango markup data
         case 'x': // xdxf
+
+        case 't': // english phonetic string
+
+        case 'k': // KingSoft PowerWord data
+        case 'y': // chinese YinBiao or japanese kana, utf-8
+
             if (*p) {
                 if (colorize_output) {
                     res += outputTemplate.generate(dictname, p, t, sec_size);
@@ -327,29 +333,6 @@ std::string Library::parse_data(const CBook_it &dictname, const char *data, bool
                     res += p;
                     sec_size = res.length() - sec_size;
                 }
-            }
-            sec_size++;
-            break;
-        case 't': // english phonetic string
-            if (*p) {
-                if (colorize_output)
-                    res += TRANSCRIPTION_VISFMT;
-                res += '[';
-                sec_size = res.length();
-                res += p;
-                sec_size = res.length() - sec_size;
-                res += ']';
-                if (colorize_output)
-                    res += ESC_END;
-            }
-            sec_size++;
-            break;
-        case 'k': // KingSoft PowerWord data
-        case 'y': // chinese YinBiao or japanese kana, utf-8
-            if (*p) {
-                sec_size = res.length();
-                res += p;
-                sec_size -= res.length();
             }
             sec_size++;
             break;
