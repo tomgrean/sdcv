@@ -54,12 +54,12 @@ $ find /usr/share/stardict/dic/ | sort | grep -v res
 /usr/share/stardict/dic/70-Dictionary-B/AdictB-fix1.idx
 /usr/share/stardict/dic/70-Dictionary-B/AdictB-fix1.idx.oft
 /usr/share/stardict/dic/70-Dictionary-B/AdictB-fix1.ifo
+/usr/share/stardict/dic/format.conf
 /usr/share/stardict/dic/html
 /usr/share/stardict/dic/html/autohint.js
 /usr/share/stardict/dic/html/jquery.js
 /usr/share/stardict/dic/html/jquery-ui.css
 /usr/share/stardict/dic/html/jquery-ui.js
-/usr/share/stardict/dic/format.conf
 ```
 #### Command line help
 For other helps. see `sdwv -h`.
