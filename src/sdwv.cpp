@@ -193,6 +193,11 @@ int main(int argc, char *argv[]) try {
             if (req.has_param("co")) {//content only. partial html
                 all_data = false;
             }
+#if 0
+            if (req.has_param("exit")) {//for test/debug only
+                serv.stop();
+            }
+#endif
             std::string result = lib->process_phrase(req.get_param_value("w").c_str(), all_data);
             res.set_content(result, "text/html");
         });
