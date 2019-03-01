@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	char *p;
 	struct stat infStat;
 	int ret;
-	unsigned int flag = 0;
+	unsigned int wordcount = 0;
 	unsigned int datasize;
 
 	if (argc != 2) {
@@ -55,14 +55,13 @@ int main(int argc, char *argv[])
 			return 6;
 		}
 		dataoffset = p - buffer;
-		if (flag) {
+		if (wordcount) {
 			dataoffset -= datasize;
 			dataoffset = htonl(dataoffset);
 			fwrite(&dataoffset, 4, 1, stdout);//3
 			dataoffset = p - buffer;
-		} else {
-			flag = 1;
 		}
+		++wordcount;
 		p += 3;
 		*pend = 0;
 		pxsave = p;
@@ -93,5 +92,6 @@ int main(int argc, char *argv[])
 	datasize = htonl(datasize);
 	fwrite(&datasize, 4, 1, stdout);//3
 	free(buffer);
+	fprintf(stderr, "wordcount=%d\n", wordcount);
 	return 0;
 }

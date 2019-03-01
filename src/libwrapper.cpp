@@ -31,325 +31,8 @@
 #include "utils.hpp"
 #include "libwrapper.hpp"
 
-std::string Library::parse_data(const CBook_it &dictname, const char *data, bool colorize_output)
+void TransAction::constructString(char *str, bool isFrom)
 {
-    if (!data)
-        return "";
-
-    std::string res;
-    uint32_t data_size, sec_size;
-    const char *p = data;
-    data_size = get_uint32(p);
-    p += sizeof(uint32_t);
-    while (uint32_t(p - data) < data_size) {
-        const char t = *p++;
-        sec_size = 0;
-        switch (t) {
-        case 'h': // HTML data
-        case 'w': // WikiMedia markup data
-        case 'm': // plain text, utf-8
-        case 'l': // not utf-8, some other locale encoding, discouraged, need more work...
-        case 'g': // pango markup data
-        case 'x': // xdxf
-
-        case 't': // english phonetic string
-
-        case 'k': // KingSoft PowerWord data
-        case 'y': // chinese YinBiao or japanese kana, utf-8
-
-            if (*p) {
-                if (colorize_output) {
-                    res += outputTemplate.generate(dictname, p, t, sec_size);
-                } else {
-                    sec_size = res.length();
-                    res += p;
-                    sec_size = res.length() - sec_size;
-                }
-            }
-            sec_size++;
-            break;
-        case 'W': // wav file
-        case 'P': // picture data
-            sec_size = get_uint32(p);
-            sec_size += sizeof(uint32_t);
-            break;
-        }
-        p += sec_size;
-    }
-
-    return res;
-}
-
-TSearchResult::TSearchResult(const std::string &name, const std::string &w, const std::string &&def)
-        : bookname(name)
-        , word(w)
-        , definition(def)
-        , idname(name + ".." + w)
-{
-    std::string::size_type index;
-    for (const char ch : {'\'', '\"', ' ', '\t'}) {
-        while ((index = idname.find(ch)) != std::string::npos) {
-            idname.replace(index, 1, 1, '_');
-        }
-    }
-}
-
-void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
-{
-    int32_t ind;
-    res_list.reserve(ndicts());
-    for (int idict = 0; idict < ndicts(); ++idict)
-        if (SimpleLookupWord(str.c_str(), ind, idict))
-            res_list.push_back(
-                TSearchResult(dict_name(idict),
-                              poGetWord(ind, idict),
-                              parse_data(bookname_to_ifo.find(dict_name(idict)), poGetWordData(ind, idict), param_.colorize)));
-}
-
-void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_list)
-{
-    static const int MAXFUZZY = 10;
-
-    char *fuzzy_res[MAXFUZZY];
-    if (!Libs::LookupWithFuzzy(str.c_str(), fuzzy_res, MAXFUZZY))
-        return;
-
-    for (char **p = fuzzy_res, **end = (fuzzy_res + MAXFUZZY); p != end && *p; ++p) {
-        SimpleLookup(*p, res_list);
-        free(*p);
-    }
-}
-void Library::LookupWithRule(const std::string &str, TSearchResultList &res_list)
-{
-    std::vector<char *> match_res((MAX_MATCH_ITEM_PER_LIB)*ndicts());
-
-    const int nfound = Libs::LookupWithRule(str.c_str(), &match_res[0]);
-    if (nfound == 0)
-        return;
-
-    for (int i = 0; i < nfound; ++i) {
-        SimpleLookup(match_res[i], res_list);
-        free(match_res[i]);
-    }
-}
-void Library::LookupData(const std::string &str, TSearchResultList &res_list)
-{
-    std::vector<std::vector<char *>> drl(ndicts());
-    if (!Libs::LookupData(str.c_str(), &drl[0]))
-        return;
-    for (int idict = 0; idict < ndicts(); ++idict)
-        for (char *res : drl[idict]) {
-            SimpleLookup(res, res_list);
-            free(res);
-        }
-}
-
-Library::response_out::response_out(const char *str, const Param_config &param, bool alldata) : param_(param), all_data(alldata)
-{
-    if (param_.json_output) {
-        if (param_.listen_port > 0)
-            buffer = "[";
-        else
-            putchar('[');
-        return;
-    }
-    if (param_.colorize && all_data) {
-        std::string headerhtml1 = "<html><head>"
-                "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />"
-                "<title>Star Dictionary</title>"
-                "<style>\n"
-                ".res_definition{\n"
-                " table-layout: fixed;\n"
-                " border-left: thin dashed black;\n"
-                " border-right: thin dashed black;\n"
-                " padding: 5px;\n"
-                "}\n"
-                ".res_word{\n"
-                " table-layout: fixed;\n"
-                " border: thin solid black;\n"
-                " padding: 5px;\n"
-                "}\n"
-                "</style>\n"
-                "<link href='html/jquery-ui.css' rel='stylesheet'>\n"
-                "</head><body>"
-                "<form id='qwFORM' action='/' method='GET'>"
-                "<input id='qwt' type='text' name='w' class='ui-autocomplete-input' placeholder='input word' required='required' value='";
-        std::string headerhtml2 = "'/>"
-                "<input type='submit' value='GO'/>"
-                "</form><hr/>\n"
-                "<script src='html/jquery.js'></script>\n"
-                "<script src='html/jquery-ui.js'></script>\n"
-                "<script src='html/autohint.js'></script>\n"
-                "<div id='dict_content'>";
-        if (param_.listen_port > 0) {
-            buffer = headerhtml1 + str + headerhtml2;
-        } else {
-            printf("%s%s%s",
-            headerhtml1.c_str(),
-            str,
-            headerhtml2.c_str());
-        }
-    }
-}
-
-Library::response_out &Library::response_out::operator <<(const std::string &content) {
-    if (param_.listen_port > 0) {
-        buffer += content;
-    } else {
-        printf("%s", content.c_str());
-    }
-    return *this;
-}
-std::string Library::response_out::get_content() {
-    std::string content;
-    if (param_.listen_port > 0) {
-        content = buffer;
-        buffer = std::string();
-        if (param_.json_output) {
-            content += ']';
-        } else if (param_.colorize && all_data) {
-            content += "</div></body></html>";
-        }
-    } else {
-        if (param_.json_output) {
-            putchar(']');
-        } else if (param_.colorize && all_data) {
-            printf("</div></body></html>");
-        }
-    }
-    return content;
-}
-
-void Library::response_out::print_search_result(TSearchResultList &res_list)
-{
-    bool first_result = true;
-    response_out &out = *this;
-    if (!param_.json_output && param_.colorize) {
-        out << "<ol>";
-        for (TSearchResult &res : res_list) {
-            // put list-of-contents
-            out << "<li><a href='#" << res.idname << "'>"
-                << res.word << " : " << res.bookname
-                << "</a></li>\n";
-        }
-        out << "</ol>";
-    }
-
-    for (const TSearchResult &res : res_list) {
-        if (param_.json_output) {
-            if (!first_result) {
-                out << ",";
-            } else {
-                first_result = false;
-            }
-            out << "{\"dict\": \"" << json_escape_string(res.bookname)
-                    << "\",\"word\":\"" << json_escape_string(res.word)
-                    << "\",\"definition\":\"" << json_escape_string(res.definition)
-                    << "\"}";
-
-        } else {
-            if (param_.colorize) {//HTML <DIV> output
-                out << "<div id='"<< res.idname << "' class='res_word'>"
-                    << res.bookname << " ("<< res.word
-                    << ")</div><div class='res_definition'>"
-                    << res.definition << "</div>";
-            } else {
-                out << "-->" << res.bookname
-                    << "\n-->" << res.word
-                    << "\n"<< res.definition << "\n\n";
-            }
-        }
-    }
-}
-
-const std::string Library::process_phrase(const char *str, bool alldata)
-{
-    response_out outputer(str, param_, alldata);
-    if (nullptr == str || '\0' == str[0])
-        return outputer.get_content();
-
-    std::string query;
-
-    //analyze_query(str, query);
-
-//    size_t bytes_read;
-//    size_t bytes_written;
-//    glib::Error err;
-//    glib::CharStr str;
-//    if (!utf8_input_)
-//        str.reset(g_locale_to_utf8(loc_str, -1, &bytes_read, &bytes_written, get_addr(err)));
-//    else
-//        str.reset(g_strdup(loc_str));
-//
-//    if (nullptr == get_impl(str)) {
-//        fprintf(stderr, _("Can not convert %s to utf8.\n"), loc_str);
-//        fprintf(stderr, "%s\n", err->message);
-//        return std::string();
-//    }
-
-    TSearchResultList res_list;
-
-    switch (analyze_query(str, query)) {
-    case qtFUZZY:
-        LookupWithFuzzy(query, res_list);
-        break;
-    case qtREGEXP:
-        LookupWithRule(query, res_list);
-        break;
-    case qtSIMPLE:
-        SimpleLookup(query, res_list);
-        if (res_list.empty() && !param_.no_fuzzy)
-            LookupWithFuzzy(str, res_list);
-        break;
-    case qtDATA:
-        LookupData(query, res_list);
-        break;
-    default:
-        /*nothing*/;
-    }
-
-    if (!res_list.empty()) {
-        outputer.print_search_result(res_list);
-    } else {
-        if (!param_.json_output) {
-            outputer << ("Nothing similar to ") << (str);
-        }
-    }
-
-    return outputer.get_content();
-}
-const std::string Library::get_neighbour(const char *str, int offset, uint32_t length)
-{
-    std::list<std::string> neighbour;
-    if (nullptr == str || '\0' == str[0])
-        return "";
-
-    int32_t *icurr = (int32_t*)malloc(sizeof(int32_t) * ndicts());
-    const char *word;
-
-    poGetNextWord(str, icurr);
-    while (++offset <= 2) {
-        word = poGetPreWord(icurr);
-        if (!word)
-            break;
-    }
-    while (neighbour.size() < length) {
-        word = poGetNextWord(nullptr, icurr);
-        if (word)
-            neighbour.push_back(word);
-        else
-            break;
-    }
-    free(icurr);
-
-    std::string result;
-    for (const auto &e : neighbour) {
-        result += e + "\n";
-    }
-    result.resize(result.length() - 1);//delete last "\n"
-    return result;
-}
-void TransAction::constructString(char *str, bool isFrom) {
     std::list<VarString> *target;
     char *varstart, *varend;
 
@@ -379,7 +62,8 @@ void TransAction::constructString(char *str, bool isFrom) {
         str = varend + 2;
     }
 }
-std::string TransformatTemplate::generate(const CBook_it &dictname, const char *xstr, char sametypesequence, uint32_t &sec_size) {
+std::string TransformatTemplate::generate(const CBook_it &dictname, const char *xstr, char sametypesequence, uint32_t &sec_size)
+{
     std::string res(xstr);
     sec_size = res.length();
     const std::map<char, CustomType>::const_iterator rep = customRep.find(sametypesequence);
@@ -399,7 +83,8 @@ std::string TransformatTemplate::generate(const CBook_it &dictname, const char *
     }
     return res;
 }
-TransformatTemplate::TransformatTemplate(const char *fileName) {
+TransformatTemplate::TransformatTemplate(const char *fileName)
+{
     char *content = g_file_get_contents(fileName);
     // file format
     // dict type declaration:
@@ -486,4 +171,298 @@ TransformatTemplate::TransformatTemplate(const char *fileName) {
         }
     }
     free(content);
+}
+
+static VMaper forFunc(const TSearchResultList::iterator &it, int i,const VMaper &m)
+{
+    return [&it,i,&m](const std::string &key)->std::string {
+        char num[12];
+        switch (key[0]) {
+        case 'i':
+            snprintf(num, sizeof(num), "%d", i);
+            return std::string(num);
+        case 'w':
+            return it->word;
+        case 'd':
+            return it->definition;
+        case 'b':
+            return it->bookname;
+        }
+        return m(key);
+    };
+}
+ResponseOut::ResponseOut(const char *fileName)
+{
+    char *buffer = g_file_get_contents(fileName);
+    char *content, *varstart, *varend, *varcol;
+    char stateflag = 0;
+    // file format
+    // out type declaration:
+    // {{m:h}}
+    // header
+    // {{m:f}}
+    // footer
+    // {{m:b}}
+    // body, can be more than 1 :b
+    // controls
+    // {{for:}}...{{endfor:}}
+    // variables
+    // {{str}} the word that just looked up
+    //
+    // {{word}} actual word
+    // {{bookname}} dictionary name
+    // {{definition}} the definition in dictionary
+    // {{idx}} the loop auto-increment index;
+    if (!buffer) {
+        printf("no output template\n");
+        exit(3);
+    }
+    const auto &pusher = [this](TemplateHolder *th, char stateflag) {
+        if (stateflag > 0) {
+            static_cast<ForHolder<TSearchResultList, TSearchResultList::iterator>*>(elements.back())->addHolder(th);
+        } else {
+            elements.push_back(th);
+        }
+    };
+    content = buffer;
+    while (*content) {
+        varstart = strstr(content, "{{");
+        if (nullptr == varstart) {
+            pusher(new TextHolder(content, 0), stateflag);
+            break;
+        }
+        *varstart = '\0';
+        varstart += 2;
+        if (varstart > content) {
+            pusher(new TextHolder(content, 0), stateflag);
+        }
+        varend = strstr(varstart, "}}");
+        if (nullptr == varend) {
+            printf("ERROR parsing %s\n", varstart);
+            break;
+        }
+        *varend = '\0';
+        //find ':'
+        varcol = strchr(varstart, ':');
+        if (varcol) {
+            *varcol = '\0';
+            ++varcol;
+            if (*varstart == 'm') {
+                pusher(new MarkerHolder(*varcol), stateflag);
+            } else if (0 == strncmp(varstart, "for", 4)) {
+                pusher(new ForHolder<TSearchResultList, TSearchResultList::iterator>(forFunc), stateflag);
+                ++stateflag;
+            } else if (0 == strncmp(varstart, "endfor", 7)) {
+                --stateflag;
+            }
+        } else {
+            pusher(new TextHolder(varstart, 1), stateflag);
+        }
+        content = varend + 2;
+    }
+    free(buffer);
+}
+void ResponseOut::make_content(bool isWrap, TSearchResultList &res_list, const char *str)
+{
+    const auto &wrapgetter = [&str](const std::string &key)->std::string {
+        if (str && key == "str")
+            return std::string(str);
+        return "";
+    };
+    bool outFlag = true;
+
+    for (auto &elem: elements) {
+        if (elem->holderType == 'M') {
+            if (!isWrap && static_cast<const MarkerHolder*>(elem)->flag != 'b') {
+                outFlag = false;
+            } else {
+                outFlag = true;
+            }
+        } else if (outFlag) {
+            if (elem->holderType == 'T') {
+                buffer += elem->toString(wrapgetter);
+            } else if (elem->holderType == 'F') {
+                auto *fh = static_cast<ForHolder<TSearchResultList, TSearchResultList::iterator>*>(elem);
+                fh->obj = &res_list;
+                buffer += elem->toString(wrapgetter);
+            }
+        }
+    }
+}
+
+const std::string Library::process_phrase(const char *str, bool alldata)
+{
+    TSearchResultList res_list;
+    rout.reset();
+    if (nullptr == str || '\0' == str[0]) {
+        rout.make_content(alldata, res_list, str);
+        return rout.get_content();
+    }
+
+    std::string query;
+
+    //analyze_query(str, query);
+
+//    size_t bytes_read;
+//    size_t bytes_written;
+//    glib::Error err;
+//    glib::CharStr str;
+//    if (!utf8_input_)
+//        str.reset(g_locale_to_utf8(loc_str, -1, &bytes_read, &bytes_written, get_addr(err)));
+//    else
+//        str.reset(g_strdup(loc_str));
+//
+//    if (nullptr == get_impl(str)) {
+//        fprintf(stderr, _("Can not convert %s to utf8.\n"), loc_str);
+//        fprintf(stderr, "%s\n", err->message);
+//        return std::string();
+//    }
+
+
+    switch (analyze_query(str, query)) {
+    case qtFUZZY:
+        LookupWithFuzzy(query, res_list);
+        break;
+    case qtREGEXP:
+        LookupWithRule(query, res_list);
+        break;
+    case qtSIMPLE:
+        SimpleLookup(query, res_list);
+        if (res_list.empty() && !param_.no_fuzzy)
+            LookupWithFuzzy(str, res_list);
+        break;
+    case qtDATA:
+        LookupData(query, res_list);
+        break;
+    default:
+        /*nothing*/;
+    }
+
+    rout.make_content(alldata, res_list, str);
+
+    return rout.get_content();
+}
+const std::string Library::get_neighbour(const char *str, int offset, uint32_t length)
+{
+    std::list<std::string> neighbour;
+    if (nullptr == str || '\0' == str[0])
+        return "";
+
+    int32_t *icurr = (int32_t*)malloc(sizeof(int32_t) * ndicts());
+    const char *word;
+
+    poGetNextWord(str, icurr);
+    while (++offset <= 2) {
+        word = poGetPreWord(icurr);
+        if (!word)
+            break;
+    }
+    while (neighbour.size() < length) {
+        word = poGetNextWord(nullptr, icurr);
+        if (word)
+            neighbour.push_back(word);
+        else
+            break;
+    }
+    free(icurr);
+
+    std::string result;
+    for (const auto &e : neighbour) {
+        result += e + "\n";
+    }
+    result.resize(result.length() - 1);//delete last "\n"
+    return result;
+}
+
+std::string Library::parse_data(const CBook_it &dictname, const char *data)
+{
+    if (!data)
+        return "";
+
+    std::string res;
+    uint32_t data_size, sec_size;
+    const char *p = data;
+    data_size = get_uint32(p);
+    p += sizeof(uint32_t);
+    while (uint32_t(p - data) < data_size) {
+        const char t = *p++;
+        sec_size = 0;
+        switch (t) {
+        case 'h': // HTML data
+        case 'w': // WikiMedia markup data
+        case 'm': // plain text, utf-8
+        case 'l': // not utf-8, some other locale encoding, discouraged, need more work...
+        case 'g': // pango markup data
+        case 'x': // xdxf
+
+        case 't': // english phonetic string
+
+        case 'k': // KingSoft PowerWord data
+        case 'y': // chinese YinBiao or japanese kana, utf-8
+
+            if (*p) {
+                res += transformatter.generate(dictname, p, t, sec_size);
+            }
+            sec_size++;
+            break;
+        case 'W': // wav file
+        case 'P': // picture data
+            sec_size = get_uint32(p);
+            sec_size += sizeof(uint32_t);
+            break;
+        }
+        p += sec_size;
+    }
+
+    return res;
+}
+
+void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
+{
+    int32_t ind;
+    res_list.reserve(ndicts());
+    for (int idict = 0; idict < ndicts(); ++idict)
+        if (SimpleLookupWord(str.c_str(), ind, idict))
+            res_list.push_back(
+                TSearchResult(dict_name(idict),
+                              poGetWord(ind, idict),
+                              parse_data(bookname_to_ifo.find(dict_name(idict)), poGetWordData(ind, idict))));
+}
+
+void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_list)
+{
+    static const int MAXFUZZY = 10;
+
+    char *fuzzy_res[MAXFUZZY];
+    if (!Libs::LookupWithFuzzy(str.c_str(), fuzzy_res, MAXFUZZY))
+        return;
+
+    for (char **p = fuzzy_res, **end = (fuzzy_res + MAXFUZZY); p != end && *p; ++p) {
+        SimpleLookup(*p, res_list);
+        free(*p);
+    }
+}
+void Library::LookupWithRule(const std::string &str, TSearchResultList &res_list)
+{
+    std::vector<char *> match_res((MAX_MATCH_ITEM_PER_LIB)*ndicts());
+
+    const int nfound = Libs::LookupWithRule(str.c_str(), &match_res[0]);
+    if (nfound == 0)
+        return;
+
+    for (int i = 0; i < nfound; ++i) {
+        SimpleLookup(match_res[i], res_list);
+        free(match_res[i]);
+    }
+}
+void Library::LookupData(const std::string &str, TSearchResultList &res_list)
+{
+    std::vector<std::vector<char *>> drl(ndicts());
+    if (!Libs::LookupData(str.c_str(), &drl[0]))
+        return;
+    for (int idict = 0; idict < ndicts(); ++idict)
+        for (char *res : drl[idict]) {
+            SimpleLookup(res, res_list);
+            free(res);
+        }
 }

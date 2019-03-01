@@ -58,11 +58,11 @@ int main(int argc, char *argv[]) try {
                 {"version",       no_argument,       0,  'v' },
                 {"list-dicts",    no_argument,       0,  'l' },
                 {"use-dict",      required_argument, 0,  'u' },
-                {"json-output",   no_argument,       0,  'j' },
+                {"output-temp",   required_argument, 0,  'o' },
                 {"exact-search",  no_argument,       0,  'e' },
                 {"data-dir",      required_argument, 0,  '2' },
                 {"only-data-dir", no_argument,       0,  'x' },
-                {"color",         no_argument,       0,  'c' },
+                {"transformat",   required_argument, 0,  't' },
                 {"port",          required_argument, 0,  'p' },
                 {"daemon",        no_argument,       0,  'd' },
                 {0, 0, 0, 0 }
@@ -90,8 +90,12 @@ int main(int argc, char *argv[]) try {
                 else
                     printf("Omitting arg to '-%c'.\n", c);
                 break;
-            case 'j':
-                param.json_output = true;
+            case 'o':
+                arg = 1;
+                if (optarg)
+                    param.output_temp = optarg;
+                else
+                    printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'e':
                 param.no_fuzzy = true;
@@ -106,8 +110,12 @@ int main(int argc, char *argv[]) try {
             case 'x':
                 param.only_data_dir = true;
                 break;
-            case 'c':
-                param.colorize = true;
+            case 't':
+                arg = 1;
+                if (optarg)
+                    param.transformat = optarg;
+                else
+                    printf("Omitting arg to '-%c'.\n", c);
                 break;
             case 'p':
                 arg = 1;
@@ -132,11 +140,6 @@ int main(int argc, char *argv[]) try {
         if (arg) {
             optind++;
         }
-
-        if (param.listen_port > 0 && !param.colorize) {
-            printf("-p implies -c.\n");
-            param.colorize = true;
-        }
     } else {
         param.show_v1_h2 = 2;
     }
@@ -155,13 +158,13 @@ int main(int argc, char *argv[]) try {
                 "  -v, --version          display version information and exit\n"
                 "  -l, --list-dicts       display list of available dictionaries and exit\n"
                 "  -u, --use-dict         for search use only dictionary with this bookname\n"
-                "  -j, --json-output      print the result formatted as JSON\n"
+                "  -o, --output-temp      the output template file name. Default:out.conf\n"
                 "  -e, --exact-search     do not fuzzy-search for similar words, only return exact matches\n"
                 "  -0, --utf8-output      output must be in utf8\n"
                 "  -1, --utf8-input       input of sdwv in utf8\n"
                 "  -2, --data-dir         use this directory as path to stardict data directory\n"
                 "  -x, --only-data-dir    only use the dictionaries in data-dir, do not search in user and system directories\n"
-                "  -c, --color            colorize the output\n"
+                "  -t, --transformat      the transformat file name. Default: format.conf\n"
                 "  -p, --port             the port to listen\n"
                 "  -d, --daemon           run in daemon mode.\n"
                 "\n");
@@ -221,9 +224,7 @@ int main(int argc, char *argv[]) try {
         }
     } else if (optind < argc) {
         for (int i = optind; i < argc; ++i)
-            if (lib->process_phrase(argv[i], true).length() <= 0) {
-                return 3;
-            }
+            printf("%s\n", lib->process_phrase(argv[i], true).c_str());
     } else {
         printf("There is no word.\n");
         return 4;
@@ -259,7 +260,7 @@ static std::unique_ptr<Library> prepare(Param_config &param)
         dicts_dir_list.push_back(std::string(homedir) + G_DIR_SEPARATOR ".stardict" G_DIR_SEPARATOR "dic");
     dicts_dir_list.push_back(param.opt_data_dir);
     if (param.show_list_dicts) {
-        list_dicts(dicts_dir_list, param.json_output);
+        list_dicts(dicts_dir_list, false);
         return nullptr;
     }
 
@@ -305,9 +306,15 @@ static std::unique_ptr<Library> prepare(Param_config &param)
         }
     }
 
-    std::string ffile(data_dir);
-    ffile += "/format.conf";
-    std::unique_ptr<Library> lib(new Library(param, bookname_to_ifo, ffile.c_str()));
+    if (!param.transformat) {
+        chdir(data_dir);
+        param.transformat = "format.conf";
+    }
+    if (!param.output_temp) {
+        chdir(data_dir);
+        param.output_temp = "out.conf";
+    }
+    std::unique_ptr<Library> lib(new Library(param, bookname_to_ifo));
     lib->load(dicts_dir_list, order_list, disable_list);
     return lib;
 }

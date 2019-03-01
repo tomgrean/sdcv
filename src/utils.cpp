@@ -125,7 +125,7 @@ char *g_file_get_contents(const char *filename)
     if (f == nullptr) {
         return nullptr;
     }
-    content = (char*)malloc(stt.st_size);
+    content = (char*)malloc(stt.st_size + 1);
     if (content == nullptr) {
         fclose(f);
         return nullptr;
@@ -137,5 +137,6 @@ char *g_file_get_contents(const char *filename)
         free(content);
         return nullptr;
     }
+    content[res] = 0;
     return content;
 }

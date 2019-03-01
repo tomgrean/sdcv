@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <vector>
 #include <cctype>
@@ -13,13 +14,16 @@ struct TSearchResult {
     std::string bookname;
     std::string word;
     std::string definition;
-    std::string idname;//TODO unique id.
 
-    TSearchResult(const std::string &name, const std::string &w, const std::string &&def);
+    TSearchResult(const std::string &name, const std::string &w, const std::string &&def):
+      bookname(name)
+    , word(w)
+    , definition(def){}
 };
 
 using TSearchResultList = std::vector<TSearchResult>;
 using CBook_it = std::map<std::string, std::string>::const_iterator;
+using VMaper = std::function<std::string(const std::string&)>;
 
 //variables:
 //{{DICT_NAME}} CBook_it->first
@@ -37,6 +41,12 @@ public:
         if (flag) {
             const auto it = params.find(str);
             return it != params.end() ? it->second : "";
+        }
+        return str;
+    }
+    const std::string toString(const VMaper &getter) const {
+        if (flag) {
+            return getter(str);
         }
         return str;
     }
@@ -119,36 +129,102 @@ public:
 private:
     std::map<char, CustomType> customRep;
 };
-
+//----------------------------------------
+class TemplateHolder {
+public:
+    TemplateHolder(char htype):holderType(htype){}
+    TemplateHolder(TemplateHolder&) = delete;
+    virtual ~TemplateHolder(){}
+    virtual std::string toString(const VMaper &) const {return "";}
+    const char holderType;
+};
+class MarkerHolder: public TemplateHolder {
+    // do mark on header and footer.
+public:
+    MarkerHolder(char f):TemplateHolder('M'), flag(f){}
+    MarkerHolder(MarkerHolder&) = delete;
+    const char flag;//'h' for header, 'b' for body, 'f' for footer.
+};
+class TextHolder: public TemplateHolder {
+    // actual text or variable
+public:
+    TextHolder(const char *s, char f): TemplateHolder('T'), vstr(s, f) {}
+    TextHolder(TextHolder&) = delete;
+    std::string toString(const VMaper &getter) const override {
+        return vstr.toString(getter);
+    }
+private:
+    VarString vstr;
+};
+template<class ContainerObj, class ObjIt>
+class ForHolder: public TemplateHolder {
+    // word loops.
+public:
+    ForHolder(VMaper (*fg)(const ObjIt &,int,const VMaper &)):TemplateHolder('F'),obj(nullptr),funcgetter(fg) {}
+    ForHolder(ForHolder&) = delete;
+    ~ForHolder() {
+        for (const auto t: innerHolder) {
+            delete(t);
+        }
+    }
+    std::string toString(const VMaper &getter) const override {
+        std::string result;
+        if (innerHolder.size() <= 0 || obj == nullptr) {
+            return "";
+        }
+        int idx = 0;
+        for (ObjIt it = obj->begin(); it != obj->end(); ++it) {
+            ++idx;
+            const auto &xg = (*funcgetter)(it, idx, getter);
+            for (const auto &vs: innerHolder) {
+                result += vs->toString(xg);
+            }
+        }
+        return result;
+    }
+    void addHolder(TemplateHolder *th){
+        innerHolder.push_back(th);
+    }
+    ContainerObj *obj;
+private:
+    VMaper (*funcgetter)(const ObjIt &it,int,const VMaper &);
+    std::list<TemplateHolder*> innerHolder;
+};
+class ResponseOut {
+public:
+    explicit ResponseOut(const char *fileName);
+    ResponseOut(const ResponseOut &) = delete;
+    ResponseOut(const ResponseOut &&o):buffer(std::move(o.buffer)){}
+    ResponseOut &operator=(const ResponseOut &) = delete;
+    ~ResponseOut() {
+        for (const auto t: elements) {
+            delete(t);
+        }
+    }
+    std::string get_content() const {return buffer;}
+    void reset() {buffer.clear();}
+    void make_content(bool isWrap, TSearchResultList &res_list, const char *str);
+protected:
+    std::string buffer;
+    std::list<TemplateHolder*> elements;
+};
+//----------------------------------------
 //this class is wrapper around Dicts class for easy use
 //of it
 class Library : public Libs {
 public:
-    Library(const Param_config &param, const std::map<std::string, std::string> & bookname2ifo, const char *tconf)
-        : Libs(param), bookname_to_ifo(bookname2ifo), outputTemplate(tconf)
+    Library(const Param_config &param, const std::map<std::string, std::string> & bookname2ifo)
+        : Libs(param), bookname_to_ifo(bookname2ifo), transformatter(param.transformat), rout(param.output_temp)
     {
     }
 
     const std::string process_phrase(const char *loc_str, bool all_data);
     const std::string get_neighbour(const char *str, int offset, uint32_t length);
-    std::string parse_data(const CBook_it &dictname, const char *data, bool colorize_output);
+    std::string parse_data(const CBook_it &dictname, const char *data);
 private:
-    class response_out final
-    {
-    public:
-        explicit response_out(const char *str, const Param_config &param, bool all_data);
-        response_out(const response_out &) = delete;
-        response_out &operator=(const response_out &) = delete;
-        response_out &operator <<(const std::string &content);
-        std::string get_content();
-        void print_search_result(TSearchResultList &res_list);
-    private:
-        const Param_config &param_;
-        std::string buffer;
-        bool all_data;
-    };
     const std::map<std::string, std::string> bookname_to_ifo;
-    TransformatTemplate outputTemplate;
+    TransformatTemplate transformatter;
+    ResponseOut rout;
 
     void SimpleLookup(const std::string &str, TSearchResultList &res_list);
     void LookupWithFuzzy(const std::string &str, TSearchResultList &res_list);

@@ -916,7 +916,7 @@ Libs::~Libs()
 bool Libs::load_dict(const std::string &url)
 {
     Dict *lib = new Dict;
-    if (lib->load(url, !param_.json_output)) {
+    if (lib->load(url, true)) {
         oLib.push_back(lib);
         return true;
     }

@@ -17,11 +17,11 @@ struct Param_config {
     int show_v1_h2 = 0;
     bool show_list_dicts = false;
     const char *use_dict_list = nullptr;
-    bool json_output = false;
+    const char *output_temp = nullptr;
     bool no_fuzzy = false;
     const char *opt_data_dir = nullptr;
     bool only_data_dir = false;
-    bool colorize = false;
+    const char *transformat = nullptr;
     bool daemonize = false;
     int listen_port = -1;
 };
