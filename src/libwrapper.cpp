@@ -195,7 +195,7 @@ ResponseOut::ResponseOut(const char *fileName)
 {
     char *buffer = g_file_get_contents(fileName);
     char *content, *varstart, *varend, *varcol;
-    char stateflag = 0;
+    char stateflag = 0, marker = 0;
     // file format
     // out type declaration:
     // {{m:h}}
@@ -228,13 +228,13 @@ ResponseOut::ResponseOut(const char *fileName)
     while (*content) {
         varstart = strstr(content, "{{");
         if (nullptr == varstart) {
-            pusher(new TextHolder(content, 0), stateflag);
+            pusher(new TextHolder(content, 0, marker), stateflag);
             break;
         }
         *varstart = '\0';
         varstart += 2;
         if (varstart > content) {
-            pusher(new TextHolder(content, 0), stateflag);
+            pusher(new TextHolder(content, 0, marker), stateflag);
         }
         varend = strstr(varstart, "}}");
         if (nullptr == varend) {
@@ -248,7 +248,8 @@ ResponseOut::ResponseOut(const char *fileName)
             *varcol = '\0';
             ++varcol;
             if (*varstart == 'm') {
-                pusher(new MarkerHolder(*varcol), stateflag);
+            	marker = *varcol;
+                pusher(new MarkerHolder(marker), stateflag);
             } else if (0 == strncmp(varstart, "for", 4)) {
                 pusher(new ForHolder<TSearchResultList, TSearchResultList::iterator>(forFunc), stateflag);
                 ++stateflag;
@@ -256,7 +257,7 @@ ResponseOut::ResponseOut(const char *fileName)
                 --stateflag;
             }
         } else {
-            pusher(new TextHolder(varstart, 1), stateflag);
+            pusher(new TextHolder(varstart, 1, marker), stateflag);
         }
         content = varend + 2;
     }

@@ -41,7 +41,7 @@
 
 static const char gVersion[] = VERSION;
 
-static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json);
+static void list_dicts(const std::list<std::string> &dicts_dir_list);
 static std::unique_ptr<Library> prepare(Param_config &param);
 
 int main(int argc, char *argv[]) try {
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) try {
                 {0, 0, 0, 0 }
             };
 
-            c = getopt_long(argc, argv, "hvlu:je2:xcp:d",
+            c = getopt_long(argc, argv, "hvlu:o:e2:xt:p:d",
                      long_options, &option_index);
             if (c == -1)
                 break;
@@ -260,7 +260,7 @@ static std::unique_ptr<Library> prepare(Param_config &param)
         dicts_dir_list.push_back(std::string(homedir) + G_DIR_SEPARATOR ".stardict" G_DIR_SEPARATOR "dic");
     dicts_dir_list.push_back(param.opt_data_dir);
     if (param.show_list_dicts) {
-        list_dicts(dicts_dir_list, false);
+        list_dicts(dicts_dir_list);
         return nullptr;
     }
 
@@ -305,44 +305,35 @@ static std::unique_ptr<Library> prepare(Param_config &param)
             free(ordering_str);
         }
     }
-
+    std::string transformater;
+    std::string output_temp;
     if (!param.transformat) {
-        chdir(data_dir);
-        param.transformat = "format.conf";
+    	transformater += data_dir;
+    	transformater += G_DIR_SEPARATOR;
+    	transformater += "format.conf";
+        param.transformat = transformater.c_str();
     }
     if (!param.output_temp) {
-        chdir(data_dir);
-        param.output_temp = "out.conf";
+    	output_temp += data_dir;
+    	output_temp += G_DIR_SEPARATOR;
+    	output_temp += "out.htm";
+        param.output_temp = output_temp.c_str();
     }
     std::unique_ptr<Library> lib(new Library(param, bookname_to_ifo));
     lib->load(dicts_dir_list, order_list, disable_list);
     return lib;
 }
-static void list_dicts(const std::list<std::string> &dicts_dir_list, bool use_json)
+static void list_dicts(const std::list<std::string> &dicts_dir_list)
 {
     bool first_entry = true;
-    if (!use_json)
-        printf("Dictionary's name   Word count\n");
-    else
-        putchar('[');
+    printf("Dictionary's name   Word count\n");
     std::list<std::string> order_list, disable_list;
     for_each_file(dicts_dir_list, ".ifo", order_list,
-                  disable_list, [use_json, &first_entry](const std::string &filename, bool) -> void {
+                  disable_list, [&first_entry](const std::string &filename, bool) -> void {
                       const auto &&ifo = load_from_ifo_file(filename, false);
                       if (ifo.size() > 1) {
                           const std::string &bookname = ifo.at("bookname");
-                          if (use_json) {
-                              if (first_entry) {
-                                  first_entry = false;
-                              } else {
-                                  putchar(','); // comma between entries
-                              }
-                              printf("{\"name\": \"%s\", \"wordcount\": \"%s\"}", json_escape_string(bookname).c_str(), ifo.at("wordcount").c_str());
-                          } else {
-                              printf("%s    %s\n", bookname.c_str(), ifo.at("wordcount").c_str());
-                          }
+                          printf("%s    %s\n", bookname.c_str(), ifo.at("wordcount").c_str());
                       }
                   });
-    if (use_json)
-        printf("]\n");
 }

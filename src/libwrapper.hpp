@@ -148,11 +148,16 @@ public:
 class TextHolder: public TemplateHolder {
     // actual text or variable
 public:
-    TextHolder(const char *s, char f): TemplateHolder('T'), vstr(s, f) {}
+    TextHolder(const char *s, char f, char fl): TemplateHolder('T'), flag(fl), vstr(s, f) {}
     TextHolder(TextHolder&) = delete;
     std::string toString(const VMaper &getter) const override {
+    	if (flag == 'j' && vstr.flag) {
+    		//json format.
+    		return json_escape_string(vstr.toString(getter));
+    	}
         return vstr.toString(getter);
     }
+    const char flag;//same as in MarkerHolder.
 private:
     VarString vstr;
 };
