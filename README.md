@@ -32,6 +32,8 @@ The format.conf is split into lines. each line makes up a single config. There a
 3. Plain string replace: x=y replaces all x to y. note there is no space in between.
 4. Regular expression replace: x~y replaces any text that matches x, with y as Regex replacement string.
 
+**NOTE**: For 3, 4: x or y can contain variable {{DICT\_PATH}} as the dictionary files' absolute path, or {{DICT\_NAME}} as the dictionary name.
+
 The out.htm is the template of output.
 1. Text is written directly.
 2. Variables and control structures are in **{{...}}**.
@@ -50,7 +52,6 @@ The out.htm is the template of output.
 	`{{m:b}}` is a result body(the search result list, usually the {{for:}} loops)
 	`{{m:f}}` is a footer.
 
-**NOTE**: For 3, 4: x or y can contain variable {{DICT\_PATH}} as the dictionary files' absolute path, or {{DICT\_NAME}} as the dictionary name.
 #### Dictionaries directory layout and ordering
 Actually there is only one rule for sdwv to find dictionaries in **dictionary path**: each dictionary has one unique file name but with different extentions. Using identical name in different directories will make a lot of confusion.
 For the sake of ease, one directory for one dictionary. Besides the CLI -u option, the ordering depends on the full path of the dictionary file name. rename the directory of each dictionary and prefix it with _01-_, _12-_, _32-_, etc. to make them ordered. For example:
