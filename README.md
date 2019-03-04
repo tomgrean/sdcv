@@ -35,18 +35,20 @@ The format.conf is split into lines. each line makes up a single config. There a
 The out.htm is the template of output.
 1. Text is written directly.
 2. Variables and control structures are in **{{...}}**.
-	a). A variable is represented as {{varName}}.
-	In the nested {{for:}} loop, these variables can be used.
-	{{word}} actual word
-	{{bookname}} dictionary name
-	{{definition}} the definition in dictionary
-	{{idx}} the loop auto-increment index;
-	b). A control structure is {{c:t}}, where 'c' can be one of ("m", "for", "endfor"), 't' is text label of the control.
-	{{m: }} can be used for output control:
-	{{m:j}} is a indication of JSON format.
-	{{m:h}} is a header.
-	{{m:b}} is a result body(the search result list, usually the {{for:}} loops)
-	{{m:f}} is a footer.
+
+*	A variable is represented as {{varName}}.
+	In the nested `{{for:}}` loop, these variables can be used.
+	`{{word}}` actual word
+	`{{bookname}}` dictionary name
+	`{{definition}}` the definition in dictionary
+	`{{idx}}` the loop auto-increment index.
+
+*	A control structure is `{{c:t}}`, where 'c' can be one of ("m", "for", "endfor"), `t` is text label of the control.
+	`{{m: }}` can be used for output control:
+	`{{m:j}}` is a indication of JSON format.
+	`{{m:h}}` is a header.
+	`{{m:b}}` is a result body(the search result list, usually the {{for:}} loops)
+	`{{m:f}}` is a footer.
 
 **NOTE**: For 3, 4: x or y can contain variable {{DICT\_PATH}} as the dictionary files' absolute path, or {{DICT\_NAME}} as the dictionary name.
 #### Dictionaries directory layout and ordering
