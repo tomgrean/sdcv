@@ -79,6 +79,7 @@ $ find /usr/share/stardict/dic/ | sort | grep -v res
 /usr/share/stardict/dic/html/jquery.js
 /usr/share/stardict/dic/html/jquery-ui.css
 /usr/share/stardict/dic/html/jquery-ui.js
+/usr/share/stardict/dic/out.htm
 ```
 #### Command line help
 For other helps. see `sdwv -h`.
