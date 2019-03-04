@@ -59,10 +59,10 @@ public:
     TransAction(TransAction&) = delete;
     TransAction(TransAction&&) = delete;
     virtual ~TransAction(){}
-    virtual void replaceAll(std::string &input, const std::map<std::string, std::string>&params) = 0;
+    virtual void replaceAll(std::string &input, const VMaper &params) = 0;
 protected:
     void constructString(char *str, bool isFrom);
-    static std::string genFormatText(const std::list<VarString> &strs, const std::map<std::string, std::string>&params) {
+    static std::string genFormatText(const std::list<VarString> &strs, const VMaper &params) {
         std::string result;
         for (const auto &it : strs) {
             result += it.toString(params);
@@ -79,7 +79,7 @@ public:
         constructString(f, true);
         constructString(t, false);
     }
-    void replaceAll(std::string &input, const std::map<std::string, std::string>&params) override {
+    void replaceAll(std::string &input, const VMaper &params) override {
         std::string f = genFormatText(from, params);
         std::string t = genFormatText(to, params);
         std::string::size_type fpos = 0;
@@ -97,14 +97,14 @@ public:
         if (from.size() == 1 && from.front().flag == 0) {
             const std::string &str = from.front().str;
             try {
-                re.reset(new std::regex(str));
+                re.reset(new std::regex(str, std::regex::optimize));
             } catch (const std::regex_error &) {
                 printf("Regex error1:%s\n", str.c_str());
                 exit(2);
             }
         }
     }
-    void replaceAll(std::string &input, const std::map<std::string, std::string>&params) override {
+    void replaceAll(std::string &input, const VMaper &params) override {
         std::string f = genFormatText(from, params);
         std::string t = genFormatText(to, params);
         if (re != nullptr)
@@ -151,10 +151,10 @@ public:
     TextHolder(const char *s, char f, char fl): TemplateHolder('T'), flag(fl), vstr(s, f) {}
     TextHolder(TextHolder&) = delete;
     std::string toString(const VMaper &getter) const override {
-    	if (flag == 'j' && vstr.flag) {
-    		//json format.
-    		return json_escape_string(vstr.toString(getter));
-    	}
+        if (flag == 'j' && vstr.flag) {
+            //json format.
+            return json_escape_string(vstr.toString(getter));
+        }
         return vstr.toString(getter);
     }
     const char flag;//same as in MarkerHolder.
@@ -199,15 +199,15 @@ class ResponseOut {
 public:
     explicit ResponseOut(const char *fileName);
     ResponseOut(const ResponseOut &) = delete;
-    ResponseOut(const ResponseOut &&o):buffer(std::move(o.buffer)){}
+    ResponseOut(const ResponseOut &&o):buffer(std::move(o.buffer)), elements(std::move(o.elements)){}
     ResponseOut &operator=(const ResponseOut &) = delete;
     ~ResponseOut() {
         for (const auto t: elements) {
             delete(t);
         }
     }
-    std::string get_content() const {return buffer;}
-    void reset() {buffer.clear();}
+    inline const std::string &get_content() const {return buffer;}
+    inline void reset() {buffer.clear();}
     void make_content(bool isWrap, TSearchResultList &res_list, const char *str);
 protected:
     std::string buffer;
@@ -218,8 +218,8 @@ protected:
 //of it
 class Library : public Libs {
 public:
-    Library(const Param_config &param, const std::map<std::string, std::string> & bookname2ifo)
-        : Libs(param), bookname_to_ifo(bookname2ifo), transformatter(param.transformat), rout(param.output_temp)
+    Library(const Param_config &param, const std::map<std::string, std::string> &&bookname2path)
+        : Libs(param), bookname_to_path(bookname2path), transformatter(param.transformat), rout(param.output_temp)
     {
     }
 
@@ -227,7 +227,7 @@ public:
     const std::string get_neighbour(const char *str, int offset, uint32_t length);
     std::string parse_data(const CBook_it &dictname, const char *data);
 private:
-    const std::map<std::string, std::string> bookname_to_ifo;
+    const std::map<std::string, std::string> bookname_to_path;
     TransformatTemplate transformatter;
     ResponseOut rout;
 

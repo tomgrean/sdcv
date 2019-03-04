@@ -68,17 +68,16 @@ std::string TransformatTemplate::generate(const CBook_it &dictname, const char *
     sec_size = res.length();
     const std::map<char, CustomType>::const_iterator rep = customRep.find(sametypesequence);
     if (rep != customRep.end()) {
-        std::string path(dictname->second);
-        std::string::size_type sepend = path.rfind(G_DIR_SEPARATOR);
-        if (sepend != std::string::npos) {
-            path = path.substr(0, sepend);
-        }
-        const std::map<std::string, std::string> parametermap{
-            {"DICT_NAME", dictname->first},
-            {"DICT_PATH", path}
+        const auto &getter = [&dictname](const std::string &name)->std::string {
+            if (name == "DICT_PATH") {
+                return dictname->second;
+            } else if (name == "DICT_NAME") {
+                return dictname->first;
+            }
+            return "";
         };
         for (const auto &it : rep->second) {
-            it->replaceAll(res, parametermap);
+            it->replaceAll(res, getter);
         }
     }
     return res;
@@ -248,7 +247,7 @@ ResponseOut::ResponseOut(const char *fileName)
             *varcol = '\0';
             ++varcol;
             if (*varstart == 'm') {
-            	marker = *varcol;
+                marker = *varcol;
                 pusher(new MarkerHolder(marker), stateflag);
             } else if (0 == strncmp(varstart, "for", 4)) {
                 pusher(new ForHolder<TSearchResultList, TSearchResultList::iterator>(forFunc), stateflag);
@@ -427,7 +426,7 @@ void Library::SimpleLookup(const std::string &str, TSearchResultList &res_list)
             res_list.push_back(
                 TSearchResult(dict_name(idict),
                               poGetWord(ind, idict),
-                              parse_data(bookname_to_ifo.find(dict_name(idict)), poGetWordData(ind, idict))));
+                              parse_data(bookname_to_path.find(dict_name(idict)), poGetWordData(ind, idict))));
 }
 
 void Library::LookupWithFuzzy(const std::string &str, TSearchResultList &res_list)

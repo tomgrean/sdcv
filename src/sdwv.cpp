@@ -196,12 +196,12 @@ int main(int argc, char *argv[]) try {
             if (req.has_param("co")) {//content only. partial html
                 all_data = false;
             }
-#if 0
+#if 1
             if (req.has_param("exit")) {//for test/debug only
                 serv.stop();
             }
 #endif
-            std::string result = lib->process_phrase(req.get_param_value("w").c_str(), all_data);
+            const std::string &result = lib->process_phrase(req.get_param_value("w").c_str(), all_data);
             res.set_content(result, "text/html");
         });
         serv.get("/neigh", [&](const httplib::Request &req, httplib::Response &res) {
@@ -272,6 +272,7 @@ static std::unique_ptr<Library> prepare(Param_config &param)
                       const auto &&ifo = load_from_ifo_file(fname, false);
                       if (ifo.size() < 1)
                           return;
+
                       bookname_to_ifo[ifo.at("bookname")] = ifo.at("ifo_file_name");
                   });
 
@@ -308,18 +309,29 @@ static std::unique_ptr<Library> prepare(Param_config &param)
     std::string transformater;
     std::string output_temp;
     if (!param.transformat) {
-    	transformater += data_dir;
-    	transformater += G_DIR_SEPARATOR;
-    	transformater += "format.conf";
+        transformater += data_dir;
+        transformater += G_DIR_SEPARATOR;
+        transformater += "format.conf";
         param.transformat = transformater.c_str();
     }
     if (!param.output_temp) {
-    	output_temp += data_dir;
-    	output_temp += G_DIR_SEPARATOR;
-    	output_temp += "out.htm";
+        output_temp += data_dir;
+        output_temp += G_DIR_SEPARATOR;
+        output_temp += "out.htm";
         param.output_temp = output_temp.c_str();
     }
-    std::unique_ptr<Library> lib(new Library(param, bookname_to_ifo));
+
+    // change .ifo file name to path name.
+    for (auto it = bookname_to_ifo.begin(); it != bookname_to_ifo.end(); ++it) {
+        std::string path(it->second);
+        std::string::size_type sepend = path.rfind(G_DIR_SEPARATOR);
+        if (sepend != std::string::npos) {
+            path = path.substr(0, sepend);
+        }
+        it->second = path;
+    }
+
+    std::unique_ptr<Library> lib(new Library(param, std::move(bookname_to_ifo)));
     lib->load(dicts_dir_list, order_list, disable_list);
     return lib;
 }
