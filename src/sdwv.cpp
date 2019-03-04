@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) try {
             if (req.has_param("co")) {//content only. partial html
                 all_data = false;
             }
-#if 1
+#if 0
             if (req.has_param("exit")) {//for test/debug only
                 serv.stop();
             }
@@ -337,11 +337,10 @@ static std::unique_ptr<Library> prepare(Param_config &param)
 }
 static void list_dicts(const std::list<std::string> &dicts_dir_list)
 {
-    bool first_entry = true;
     printf("Dictionary's name   Word count\n");
     std::list<std::string> order_list, disable_list;
     for_each_file(dicts_dir_list, ".ifo", order_list,
-                  disable_list, [&first_entry](const std::string &filename, bool) -> void {
+                  disable_list, [](const std::string &filename, bool) -> void {
                       const auto &&ifo = load_from_ifo_file(filename, false);
                       if (ifo.size() > 1) {
                           const std::string &bookname = ifo.at("bookname");

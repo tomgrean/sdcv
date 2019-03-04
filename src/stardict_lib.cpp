@@ -335,7 +335,7 @@ bool DictBase::SearchData(std::vector<std::string> &SearchWords, uint32_t idxite
             sec_size = idxitem_size - (p - origin_data);
             for (j = 0; j < nWord; j++) {
                 char *t = strstr(p, SearchWords[j].c_str());
-                if (!WordFind[j] && t && t - p < sec_size) {
+                if (!WordFind[j] && t && uint32_t(t - p) < sec_size) {
                     WordFind[j] = true;
                     ++nfound;
                 }
