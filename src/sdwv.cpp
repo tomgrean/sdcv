@@ -201,23 +201,13 @@ int main(int argc, char *argv[]) try {
                 serv.stop();
             }
 #endif
-            if (req.has_param("w")) {
-                const std::string &result = lib->process_phrase(req.get_param_value("w").c_str(), all_data);
-                res.set_content(result, "text/html");
-            } else {
-                res.status = 404;
-                res.set_content("", "text/html");
-            }
+            const std::string &result = lib->process_phrase(req.get_param_value("w").c_str(), all_data);
+            res.set_content(result, "text/html");
         });
         serv.get("/neigh", [&](const httplib::Request &req, httplib::Response &res) {
             int offset;
             uint32_t length;
             char *pch;
-            if (!(req.has_param("off") && req.has_param("len") && req.has_param("w"))) {
-                res.status = 404;
-                res.set_content("", "text/html");
-                return;
-            }
             offset = strtol(req.get_param_value("off").c_str(), &pch, 10);
             if (*pch) {
                 offset = 0;
@@ -226,7 +216,7 @@ int main(int argc, char *argv[]) try {
             if (*pch) {
                 length = 10;
             }
-            std::string result = lib->get_neighbour(req.get_param_value("w").c_str(), offset, length);
+            const std::string &result = lib->get_neighbour(req.get_param_value("w").c_str(), offset, length);
             res.set_content(result, "text/plain");
         });
         if (!serv.listen("0.0.0.0", param.listen_port)) {

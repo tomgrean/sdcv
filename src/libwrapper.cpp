@@ -367,10 +367,12 @@ const std::string Library::get_neighbour(const char *str, int offset, uint32_t l
     free(icurr);
 
     std::string result;
-    for (const auto &e : neighbour) {
-        result += e + "\n";
+    for (auto it = neighbour.begin(); it != neighbour.end(); ++it) {
+        if (it != neighbour.begin()) {
+            result += '\n';
+        }
+        result += *it;
     }
-    result.resize(result.length() - 1);//delete last "\n"
     return result;
 }
 
