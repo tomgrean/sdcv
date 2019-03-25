@@ -201,13 +201,23 @@ int main(int argc, char *argv[]) try {
                 serv.stop();
             }
 #endif
-            const std::string &result = lib->process_phrase(req.get_param_value("w").c_str(), all_data);
-            res.set_content(result, "text/html");
+            if (req.has_param("w")) {
+                const std::string &result = lib->process_phrase(req.get_param_value("w").c_str(), all_data);
+                res.set_content(result, "text/html");
+            } else {
+                res.status = 404;
+                res.set_content("", "text/html");
+            }
         });
         serv.get("/neigh", [&](const httplib::Request &req, httplib::Response &res) {
             int offset;
             uint32_t length;
             char *pch;
+            if (!(req.has_param("off") && req.has_param("len") && req.has_param("w"))) {
+                res.status = 404;
+                res.set_content("", "text/html");
+                return;
+            }
             offset = strtol(req.get_param_value("off").c_str(), &pch, 10);
             if (*pch) {
                 offset = 0;
